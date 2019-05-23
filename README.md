@@ -7,10 +7,10 @@ PHP has the function [`openssl_get_privatekey`](openssl_get_privatekey) that can
 ```php
 <?php
 // Load from file link
-$privateKey = openssl_get_privatekey("file://privateKey.pem");
+$privateKeyString = openssl_get_privatekey("file://privateKey.pem");
 
 // Load from PEM string
-$privateKey =
+$privateKeyString =
 "-----BEGIN EC PARAMETERS-----
 BgUrgQQACg==
 -----END EC PARAMETERS-----
@@ -19,7 +19,9 @@ MHQCAQEEIHI6VMaMwvRag0foPp87+nhby3QrftcEsBHee6sdr0aZoAcGBSuBBAAK
 oUQDQgAE91vCtp7tO4FyJbpgSS824PiuLR7LPNdwt+rcIe0uE19RUJz2Jgm8tRRD
 HmBVzoQXNxcwVD1HfRMtU0wnUJOuAQ==
 -----END EC PRIVATE KEY-----";
-$privateKey = openssl_get_privatekey($privateKey);
+
+$privateKey = openssl_get_privatekey($privateKeyString);
+
 ?>
 ```
 
@@ -49,15 +51,17 @@ Similarly to the private key, PHP has the function [`openssl_get_publickey`](ope
 ```php
 <?php
 // Load from file link
-$publicKey = openssl_get_publickey("file://publicKey.pem");
+$publicKeyString = openssl_get_publickey("file://publicKey.pem");
 
 // Load from PEM string
-$publicKey =
+$publicKeyString =
 "-----BEGIN PUBLIC KEY-----
 MFYwEAYHKoZIzj0CAQYFK4EEAAoDQgAE91vCtp7tO4FyJbpgSS824PiuLR7LPNdw
 t+rcIe0uE19RUJz2Jgm8tRRDHmBVzoQXNxcwVD1HfRMtU0wnUJOuAQ==
 -----END PUBLIC KEY-----";
-$publicKey = openssl_get_publickey($publicKey);
+
+$publicKey = openssl_get_publickey($publicKeyString);
+
 ?>
 ```
 

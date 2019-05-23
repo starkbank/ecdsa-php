@@ -2,7 +2,7 @@
 
 // Use SHA256 hash algorithm
 $alg = OPENSSL_ALGO_SHA256;
-$privateKey =
+$privateKeyString =
 "-----BEGIN EC PARAMETERS-----
 BgUrgQQACg==
 -----END EC PARAMETERS-----
@@ -13,7 +13,7 @@ HmBVzoQXNxcwVD1HfRMtU0wnUJOuAQ==
 -----END EC PRIVATE KEY-----";
 // Both string and file link works the same
 // $privateKey = openssl_get_privatekey("file://privateKey.pem");
-$privateKey = openssl_get_privatekey($privateKey);
+$privateKey = openssl_get_privatekey($privateKeyString);
 
 $message = array(
   "transaction" => array(
@@ -50,14 +50,14 @@ if (openssl_sign($message, $signature, $privateKey, $alg)) {
     exit;
 }
 
-$publicKey =
+$publicKeyString =
 "-----BEGIN PUBLIC KEY-----
 MFYwEAYHKoZIzj0CAQYFK4EEAAoDQgAE91vCtp7tO4FyJbpgSS824PiuLR7LPNdw
 t+rcIe0uE19RUJz2Jgm8tRRDHmBVzoQXNxcwVD1HfRMtU0wnUJOuAQ==
 -----END PUBLIC KEY-----";
 // Both string and file link works the same
 // $publicKey = openssl_get_publickey("file://publicKey.pem");
-$publicKey = openssl_get_publickey($publicKey);
+$publicKey = openssl_get_publickey($publicKeyString);
 
 // Verify signature.
 $success = openssl_verify($message, base64_decode($signature), $publicKey, $alg);
