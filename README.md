@@ -2,7 +2,7 @@
 
 ### Overview
 
-This is a PHP fork of [ecdsa-python]. It is compatible with PHP 3+.
+This is a PHP fork of [ecdsa-python]. It is compatible with PHP 5+.
 
 It is compatible with OpenSSL.
 
