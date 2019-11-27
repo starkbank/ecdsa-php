@@ -1,9 +1,9 @@
 <?php
 
-namespace starkbank\ecdsa_php\utils;
+namespace EcdsaPhp\Utils;
 
 class File {
-    public static function read($path, $mode="r") {
+    static function read($path, $mode="r") {
         $file = fopen($path, $mode);
         $content = fread($file, filesize(path));
         fclose($file);

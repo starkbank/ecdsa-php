@@ -1,13 +1,14 @@
 <?php
 
-namespace starkbank\ecdsa_php;
+namespace EcdsaPhp;
 
 
 class PrivateKey {
     function __construct($curve="secp256k1", $openSslPrivateKey=null) {
         if (is_null($openSslPrivateKey)) {
             $config = array(
-                "config" => getenv("OPENSSL_CONF"),
+                "digest_alg" => "sha256",
+                "private_key_bits" => 2048,
                 "private_key_type" => OPENSSL_KEYTYPE_EC,
                 "curve_name" => $curve
             );
@@ -15,14 +16,15 @@ class PrivateKey {
             $response = openssl_pkey_new($config);
 
             openssl_pkey_export($response, $openSslPrivateKey, null, $config);
+
+            $openSslPrivateKey = openssl_pkey_get_private($openSslPrivateKey);
         }
 
         $this->openSslPrivateKey = $openSslPrivateKey;
     }
 
     function publicKey() {
-        // $openSslPublicKey = openssl_pkey_get_details($response)["key"];
-        $openSslPublicKey = openssl_pkey_get_public($this->openSslPrivateKey)["key"];
+        $openSslPublicKey = openssl_pkey_get_details($this->openSslPrivateKey)["key"];
 
         return new PublicKey($openSslPublicKey);
     }
@@ -32,16 +34,23 @@ class PrivateKey {
     }
 
     function toDer () {
-        openssl_pkey_export($this->openSslPrivateKey, $out, null);
-        
-        return $out;
+        $pem = $this->toPem();
+    
+        $lines = array();
+        foreach(explode("\n", $pem) as $value) { 
+            if (substr($value, 0, 5) !== "-----") {
+                array_push($lines, $value);
+            }
+        }
+
+        $pem_data = join("", $lines);
+
+        return base64_decode($pem_data);
     }
 
     function toPem () {
-        $der = $this->toDer();
-        $pem = chunk_split(base64_encode($der), 64, "\n");
-        $pem = "-----BEGIN CERTIFICATE-----\n" . $pem . "-----END CERTIFICATE-----\n";
-        return $pem;
+        openssl_pkey_export($this->openSslPrivateKey, $out, null);
+        return $out;
     }
 
     static function fromPem ($str) {

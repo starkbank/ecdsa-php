@@ -1,11 +1,14 @@
 <?php
 
-namespace starkbank\ecdsa_php;
+namespace EcdsaPhp;
+
 
 class PublicKey {
     
-    function __construct ($openSslPublicKey) {
-        $this->openSslPublicKey = $openSslPublicKey;
+    function __construct ($pem) {
+        $this->pem = $pem;
+        $openSslPublicKey = null;
+        $this->openSslPublicKey = openssl_get_publickey($openSslPublicKey);
     }
 
     function toString () {
@@ -13,29 +16,38 @@ class PublicKey {
     }
 
     function toDer () {
-        openssl_pkey_export($this->openSslPublicKey, $out, null);
-        
-        return $out;
+        $pem = $this->toPem();
+    
+        $lines = array();
+        foreach(explode("\n", $pem) as $value) { 
+            if (substr($value, 0, 5) !== "-----") {
+                array_push($lines, $value);
+            }
+        }
+
+        $pem_data = join("", $lines);
+
+        return base64_decode($pem_data);
     }
 
     function toPem () {
-        $der = $this->toDer();
-        $pem = chunk_split(base64_encode($der), 64, "\n");
-        $pem = "-----BEGIN CERTIFICATE-----\n" . $pem . "-----END CERTIFICATE-----\n";
-        return $pem;
+        return $this->pem;
     }
 
     static function fromPem ($str) {
-        return new PrivateKey(openssl_get_publickey($str));
+        return new PublicKey($str);
     }
 
     static function fromDer ($str) {
-        return new PrivateKey(openssl_get_publickey($str));
+        $pem_data = base64_encode($str);
+        $pem = "-----BEGIN PUBLIC KEY-----\n" . substr($pem_data, 0, 64) . "\n" . substr($pem_data, 64) . "\n-----END PUBLIC KEY-----\n";
+        return new PublicKey($pem);
     }
 
     static function fromString ($str) {
-        return new PrivateKey(openssl_get_publickey(base64_decode($str)));
+        return PublicKey::fromDer(base64_decode($str));
     }
+
 }
 
 ?>

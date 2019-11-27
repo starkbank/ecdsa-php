@@ -1,6 +1,7 @@
 <?php
 
-namespace starkbank\ecdsa_php;
+namespace EcdsaPhp;
+
 
 class Signature {
     
