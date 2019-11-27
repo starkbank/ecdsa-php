@@ -54,7 +54,15 @@ class PrivateKey {
     }
 
     static function fromPem ($str) {
-        return new PrivateKey(null, openssl_get_privatekey($str));
+        $rebuilt = array();
+        foreach(explode("\n", $str) as $line) { 
+            $line = trim($line);
+            if (strlen($line) > 1) {
+                array_push($rebuilt, $line);
+            }
+        };
+        $rebuilt = join("\n", $rebuilt) . "\n";
+        return new PrivateKey(null, openssl_get_privatekey($rebuilt));
     }
 
     static function fromDer ($str) {

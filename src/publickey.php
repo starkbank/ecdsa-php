@@ -34,7 +34,15 @@ class PublicKey {
     }
 
     static function fromPem ($str) {
-        return new PublicKey($str);
+        $rebuilt = array();
+        foreach(explode("\n", $str) as $line) { 
+            $line = trim($line);
+            if (strlen($line) > 1) {
+                array_push($rebuilt, $line);
+            }
+        };
+        $rebuilt = join("\n", $rebuilt) . "\n";
+        return new PublicKey($rebuilt);
     }
 
     static function fromDer ($str) {
