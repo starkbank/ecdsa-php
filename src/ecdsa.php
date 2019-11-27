@@ -2,19 +2,17 @@
 
 namespace EcdsaPhp;
 
-$alg = OPENSSL_ALGO_SHA256;
-
 
 class Ecdsa {
     
     public static function sign ($message, $privateKey) {
         $signature = null;
-        $signatureString = openssl_sign($message, $signature, $privateKey->openSslPrivateKey, $alg);
-        return new Signature($signatureString);
+        openssl_sign($message, $signature, $privateKey->openSslPrivateKey, OPENSSL_ALGO_SHA256);
+        return new Signature($signature);
     }
 
     public static function verify ($message, $signature, $publicKey) {
-        $success = openssl_verify($message, base64_decode($signature->toDer()), $publicKey->openSslPublicKey, $alg);
+        $success = openssl_verify($message, $signature->toDer(), $publicKey->openSslPublicKey, OPENSSL_ALGO_SHA256);
         if ($success == 1) {
             return true;
         }

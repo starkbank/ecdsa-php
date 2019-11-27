@@ -4,7 +4,7 @@ namespace EcdsaPhp;
 
 
 class Signature {
-    
+
     function __construct ($der) {
         $this->der = $der;
     }
@@ -14,7 +14,7 @@ class Signature {
     }
 
     function toBase64 () {
-        base64_encode($this->toDer());
+        return base64_encode($this->der);
     }
 
     static function fromDer ($str) {
@@ -22,7 +22,7 @@ class Signature {
     }
 
     static function fromBase64 ($str) {
-        return $this->fromDer(base64_decode($str));
+        return new Signature(base64_decode($str));
     }
 
 }

@@ -58,11 +58,13 @@ class PrivateKey {
     }
 
     static function fromDer ($str) {
-        return new PrivateKey(null, openssl_get_privatekey($str));
+        $pem_data = base64_encode($str);
+        $pem = "-----BEGIN EC PRIVATE KEY-----\n" . substr($pem_data, 0, 64) . "\n" . substr($pem_data, 64, 64) . "\n" . substr($pem_data, 128, 64) . "\n-----END EC PRIVATE KEY-----\n";
+        return new PrivateKey(null, openssl_get_privatekey($pem));
     }
 
     static function fromString ($str) {
-        return new PrivateKey(null, openssl_get_privatekey(base64_decode($str)));
+        return PrivateKey::fromDer(base64_decode($str));
     }
 
 }

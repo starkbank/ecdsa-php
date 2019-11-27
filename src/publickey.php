@@ -7,8 +7,7 @@ class PublicKey {
     
     function __construct ($pem) {
         $this->pem = $pem;
-        $openSslPublicKey = null;
-        $this->openSslPublicKey = openssl_get_publickey($openSslPublicKey);
+        $this->openSslPublicKey = openssl_get_publickey($pem);
     }
 
     function toString () {
