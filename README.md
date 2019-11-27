@@ -2,7 +2,7 @@
 
 ### Overview
 
-This is a PHP fork of [ecdsa-python]. It is compatible with PHP 5+.
+This is a PHP fork of [ecdsa-python]. It is compatible with PHP 5.5+. Please note that this library relies heavily on the openssl package for PHP, so - depending on you PHP installation - you may need to re-compile it with the "–with-openssl" flag.
 
 It is compatible with OpenSSL.
 
