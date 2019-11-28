@@ -13,7 +13,7 @@ To install StarkBank`s ECDSA-PHP using composer:
 ```json
 {
     "require": {
-        "starkbank/ecdsa_php": "0.0.1"
+        "starkbank/ecdsa": "0.0.1"
     }
 }
 ```
@@ -37,7 +37,7 @@ How to sign a json message for [Stark Bank]:
 ```php
 
 # Generate privateKey from PEM string
-$privateKey = EcdsaPhp\PrivateKey::fromPem("
+$privateKey = EllipticCurve\PrivateKey::fromPem("
     -----BEGIN EC PARAMETERS-----
     BgUrgQQACg==
     -----END EC PARAMETERS-----
@@ -66,7 +66,7 @@ $message = array(
 
 $message = json_encode($message, JSON_PRETTY_PRINT);
 
-$signature = EcdsaPhp\Ecdsa::sign($message, $privateKey);
+$signature = EllipticCurve\Ecdsa::sign($message, $privateKey);
 
 # Generate Signature in base64. This result can be sent to Stark Bank in header as Digital-Signature parameter
 echo "\n" . $signature->toBase64();
@@ -74,7 +74,7 @@ echo "\n" . $signature->toBase64();
 # To double check if message matches the signature
 $publicKey = $privateKey->publicKey();
 
-echo "\n" . EcdsaPhp\Ecdsa::verify($message, $signature, $publicKey);
+echo "\n" . EllipticCurve\Ecdsa::verify($message, $signature, $publicKey);
 
 ```
 
@@ -83,16 +83,16 @@ Simple use:
 ```php
 
 # Generate new Keys
-$privateKey = new EcdsaPhp\PrivateKey;
+$privateKey = new EllipticCurve\PrivateKey;
 $publicKey = $privateKey->publicKey();
 
 $message = "My test message";
 
 # Generate Signature
-$signature = EcdsaPhp\Ecdsa::sign($message, $privateKey);
+$signature = EllipticCurve\Ecdsa::sign($message, $privateKey);
 
 # Verify if signature is valid
-echo "\n" . EcdsaPhp\Ecdsa::verify($message, $signature, $publicKey);
+echo "\n" . EllipticCurve\Ecdsa::verify($message, $signature, $publicKey);
 
 ```
 
@@ -115,14 +115,14 @@ It's time to verify:
 
 ```php
 
-$publicKeyPem = EcdsaPhp\Utils\File::read("publicKey.pem");
-$signatureDer = EcdsaPhp\Utils\File::read("signatureDer.txt");
-$message = EcdsaPhp\Utils\File::read("message.txt");
+$publicKeyPem = EllipticCurve\Utils\File::read("publicKey.pem");
+$signatureDer = EllipticCurve\Utils\File::read("signatureDer.txt");
+$message = EllipticCurve\Utils\File::read("message.txt");
 
-$publicKey = EcdsaPhp\PublicKey::fromPem($publicKeyPem);
-$signature = EcdsaPhp\Signature::fromDer($signatureDer);
+$publicKey = EllipticCurve\PublicKey::fromPem($publicKeyPem);
+$signature = EllipticCurve\Signature::fromDer($signatureDer);
 
-echo "\n" . EcdsaPhp\Ecdsa::verify($message, $signature, $publicKey);
+echo "\n" . EllipticCurve\Ecdsa::verify($message, $signature, $publicKey);
 
 ```
 
@@ -141,9 +141,9 @@ openssl base64 -in signatureDer.txt -out signatureBase64.txt
 With this library, you can do it:
 
 ```php
-$signatureDer = EcdsaPhp\Utils\File::read("signatureDer.txt");
+$signatureDer = EllipticCurve\Utils\File::read("signatureDer.txt");
 
-$signature = EcdsaPhp\Signature::fromDer($signatureDer);
+$signature = EllipticCurve\Signature::fromDer($signatureDer);
 
 echo "\n" . $signature->toBase64();
 ```

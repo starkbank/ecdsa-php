@@ -1,6 +1,6 @@
 <?php
 
-namespace EcdsaPhp\Utils;
+namespace EllipticCurve\Utils;
 
 class File {
     static function read($path, $mode="r") {

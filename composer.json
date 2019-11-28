@@ -1,5 +1,5 @@
 {
-    "name": "starkbank/ecdsa_php",
+    "name": "starkbank/ecdsa",
     "version": "0.0.1",
     "type": "library",
     "description": "fast openSSL-compatible implementation of the Elliptic Curve Digital Signature Algorithm (ECDSA)",
@@ -9,12 +9,12 @@
     },
     "autoload": {
         "psr-4" : {
-            "EcdsaPhp\\" : "src/"
+            "EllipticCurve\\" : "src/"
         }
     },
     "autoload-dev": {
         "psr-4" : {
-            "EcdsaPhp\\" : "tests/"
+            "EllipticCurve\\" : "tests/"
         }
     }
 }
