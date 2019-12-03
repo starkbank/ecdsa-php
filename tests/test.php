@@ -27,7 +27,7 @@ function printSubHeader($text) {
 }
 
 
-echo "\n\nRunning ECDSA-Ruby tests:";
+echo "\n\nRunning ECDSA tests:";
 
 printHeader("ECDSA");
 
