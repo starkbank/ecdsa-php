@@ -2,9 +2,7 @@
 
 ### Overview
 
-This is a PHP fork of [ecdsa-python]. It is compatible with PHP 5.5+. Please note that this library relies heavily on the openssl package for PHP, so - depending on you PHP installation - you may need to re-compile it with the "–with-openssl" flag.
-
-It is compatible with OpenSSL.
+This is a PHP implementation of the Elliptic Curve Digital Signature Algorithm. It is compatible with PHP 5.5+. Please note that this library relies heavily on the openssl package for PHP, so - depending on you PHP installation - you may need to re-compile it with the "–with-openssl" flag.
 
 ### Installation
 
@@ -138,7 +136,7 @@ NOTE: If you want to create a Digital Signature to use in the [Stark Bank], you 
 openssl base64 -in signatureDer.txt -out signatureBase64.txt
 ```
 
-With this library, you can do it:
+You can also verify it with this library:
 
 ```php
 $signatureDer = EllipticCurve\Utils\File::read("signatureDer.txt");
