@@ -1,94 +1,157 @@
-## How to use ECDSA signature with built-in PHP OpenSSL bindings
+## A lightweight and fast PHP ECDSA
 
-### Sign messages
+### Overview
 
-PHP has the function [`openssl_get_privatekey`](openssl_get_privatekey) that can load ECDSA private keys the PEM string or file link.
+This is a PHP implementation of the Elliptic Curve Digital Signature Algorithm. It is compatible with PHP 5.5+. Please note that this library relies heavily on the openssl package for PHP, so - depending on you PHP installation - you may need to re-compile it with the "–with-openssl" flag.
 
-```php
-<?php
-// Load from file link
-$privateKeyString = openssl_get_privatekey("file://privateKey.pem");
+### Installation
 
-// Load from PEM string
-$privateKeyString =
-"-----BEGIN EC PARAMETERS-----
-BgUrgQQACg==
------END EC PARAMETERS-----
------BEGIN EC PRIVATE KEY-----
-MHQCAQEEIHI6VMaMwvRag0foPp87+nhby3QrftcEsBHee6sdr0aZoAcGBSuBBAAK
-oUQDQgAE91vCtp7tO4FyJbpgSS824PiuLR7LPNdwt+rcIe0uE19RUJz2Jgm8tRRD
-HmBVzoQXNxcwVD1HfRMtU0wnUJOuAQ==
------END EC PRIVATE KEY-----";
+To install StarkBank`s ECDSA-PHP using composer:
 
-$privateKey = openssl_get_privatekey($privateKeyString);
-
-?>
-```
-
-To create a signature for the message, use the function [`openssl_sign`](openssl_sign) with SHA256 as hash algorithm.  
-For the Stark Bank APIs that use ECDSA signature, the signature needs to be sent in base64 instead of binary DER format.
-
-
-```php
-<?php
-$alg = OPENSSL_ALGO_SHA256;
-$signature = null;
-
-if (openssl_sign($message, $signature, $privateKey, $alg)) {
-    $signature = base64_encode($signature); // Send the data in base64
-
-    echo "Signature: " . $signature . "\n";
-} else {
-    echo "Failed to sign message: " . openssl_error_string() . "\n";
+```json
+{
+    "require": {
+        "starkbank/ecdsa": "0.0.1"
+    }
 }
-?>
 ```
 
-### Verify signature
+### Curves
 
-Similarly to the private key, PHP has the function [`openssl_get_publickey`](openssl_get_publickey) for public keys.
+The module is wrapped around the builtin openssl functions, so all standar curves should be supported. The default is `secp256k1`.
+
+### Speed
+
+We ran a test on a MAC Pro i7 2017. We ran the library 100 times and got the average time displayed bellow:
+
+| Library            | sign          | verify  |
+| ------------------ |:-------------:| -------:|
+| starkbank-ecdsa    |     0.6ms     |  0.4ms  |
+
+### Sample Code
+
+How to sign a json message for [Stark Bank]:
 
 ```php
-<?php
-// Load from file link
-$publicKeyString = openssl_get_publickey("file://publicKey.pem");
 
-// Load from PEM string
-$publicKeyString =
-"-----BEGIN PUBLIC KEY-----
-MFYwEAYHKoZIzj0CAQYFK4EEAAoDQgAE91vCtp7tO4FyJbpgSS824PiuLR7LPNdw
-t+rcIe0uE19RUJz2Jgm8tRRDHmBVzoQXNxcwVD1HfRMtU0wnUJOuAQ==
------END PUBLIC KEY-----";
+# Generate privateKey from PEM string
+$privateKey = EllipticCurve\PrivateKey::fromPem("
+    -----BEGIN EC PARAMETERS-----
+    BgUrgQQACg==
+    -----END EC PARAMETERS-----
+    -----BEGIN EC PRIVATE KEY-----
+    MHQCAQEEIODvZuS34wFbt0X53+P5EnSj6tMjfVK01dD1dgDH02RzoAcGBSuBBAAK
+    oUQDQgAE/nvHu/SQQaos9TUljQsUuKI15Zr5SabPrbwtbfT/408rkVVzq8vAisbB
+    RmpeRREXj5aog/Mq8RrdYy75W9q/Ig==
+    -----END EC PRIVATE KEY-----
+");
 
-$publicKey = openssl_get_publickey($publicKeyString);
 
-?>
+# Create message from json
+$message = array(
+    "transfers" => array(
+        array(
+            "amount" => 100000000,
+            "taxId" => "594.739.480-42",
+            "name" => "Daenerys Targaryen Stormborn",
+            "bankCode" => "341",
+            "branchCode" => "2201",
+            "accountNumber" => "76543-8",
+            "tags" => array("daenerys", "targaryen", "transfer-1-external-id")
+        )
+    )
+);
+
+$message = json_encode($message, JSON_PRETTY_PRINT);
+
+$signature = EllipticCurve\Ecdsa::sign($message, $privateKey);
+
+# Generate Signature in base64. This result can be sent to Stark Bank in header as Digital-Signature parameter
+echo "\n" . $signature->toBase64();
+
+# To double check if message matches the signature
+$publicKey = $privateKey->publicKey();
+
+echo "\n" . EllipticCurve\Ecdsa::verify($message, $signature, $publicKey);
+
 ```
 
-To verify the message signature, use the function [`openssl_verify`](`openssl_verify`) with SHA256 hash algorithm.  
-Whenever you receive a signed message from Stark Bank systems, the signature is sent in base64.
+Simple use:
 
 ```php
-<?php
-$alg = OPENSSL_ALGO_SHA256;
-$success = openssl_verify($message, base64_decode($signature), $publicKey, $alg);
 
-if ($success === -1) {
-    echo "openssl_verify() failed with error.  " . openssl_error_string() . "\n";
-} elseif ($success === 1) {
-    echo "Signature verification was successful!\n";
-} else {
-    echo "Signature verification failed.  Incorrect key or data has been tampered with\n";
-}
-?>
+# Generate new Keys
+$privateKey = new EllipticCurve\PrivateKey;
+$publicKey = $privateKey->publicKey();
+
+$message = "My test message";
+
+# Generate Signature
+$signature = EllipticCurve\Ecdsa::sign($message, $privateKey);
+
+# Verify if signature is valid
+echo "\n" . EllipticCurve\Ecdsa::verify($message, $signature, $publicKey);
+
 ```
 
-### Complete example
+### OpenSSL
 
-You can find a complete example of signing and verifying in the file [`signKey.php`](/signKey.php)
+This library is compatible with OpenSSL, so you can use it to generate keys:
 
+```
+openssl ecparam -name secp256k1 -genkey -out privateKey.pem
+openssl ec -in privateKey.pem -pubout -out publicKey.pem
+```
 
-[openssl_get_privatekey]: https://www.php.net/manual/en/function.openssl-get-privatekey.php
-[openssl_sign]: https://www.php.net/manual/en/function.openssl-sign.php
-[openssl_get_publickey]: https://www.php.net/manual/en/function.openssl-get-publickey.php
-[openssl_verify]: https://www.php.net/manual/en/function.openssl-verify.php
+Create a message.txt file and sign it:
+
+```
+openssl dgst -sha256 -sign privateKey.pem -out signatureDer.txt message.txt
+```
+
+It's time to verify:
+
+```php
+
+$publicKeyPem = EllipticCurve\Utils\File::read("publicKey.pem");
+$signatureDer = EllipticCurve\Utils\File::read("signatureDer.txt");
+$message = EllipticCurve\Utils\File::read("message.txt");
+
+$publicKey = EllipticCurve\PublicKey::fromPem($publicKeyPem);
+$signature = EllipticCurve\Signature::fromDer($signatureDer);
+
+echo "\n" . EllipticCurve\Ecdsa::verify($message, $signature, $publicKey);
+
+```
+
+You can also verify it on terminal:
+
+```
+openssl dgst -sha256 -verify publicKey.pem -signature signatureDer.txt message.txt
+```
+
+NOTE: If you want to create a Digital Signature to use in the [Stark Bank], you need to convert the binary signature to base64.
+
+```
+openssl base64 -in signatureDer.txt -out signatureBase64.txt
+```
+
+You can also verify it with this library:
+
+```php
+$signatureDer = EllipticCurve\Utils\File::read("signatureDer.txt");
+
+$signature = EllipticCurve\Signature::fromDer($signatureDer);
+
+echo "\n" . $signature->toBase64();
+```
+
+[Stark Bank]: https://starkbank.com
+
+### Run all unit tests
+
+```sh
+php tests/test.php
+```
+
+[python-ecdsa]: https://github.com/warner/python-ecdsa
