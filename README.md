@@ -11,7 +11,7 @@ To install StarkBank`s ECDSA-PHP using composer:
 ```json
 {
     "require": {
-        "starkbank/ecdsa": "0.0.1"
+        "starkbank/ecdsa": "0.0.2"
     }
 }
 ```
