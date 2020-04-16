@@ -17,13 +17,6 @@
         "php" : ">=5.5"
     },
     "autoload": {
-        "psr-4": {
-            "EllipticCurve\\": "src/"
-        }
-    },
-    "autoload-dev": {
-        "psr-4": {
-            "EllipticCurve\\": "tests/"
-        }
+        "files": ["src/ellipticcurve.php"]
     }
 }
