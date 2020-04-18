@@ -6,14 +6,18 @@ This is a PHP implementation of the Elliptic Curve Digital Signature Algorithm. 
 
 ### Installation
 
-To install StarkBank`s ECDSA-PHP using composer:
+#### Composer
 
-```json
-{
-    "require": {
-        "starkbank/ecdsa": "dev-master#0.0.2"
-    }
-}
+To install the package with Composer, run:
+
+```sh
+composer require starkbank/ecdsa
+```
+
+To use the bindings, use Composer's autoload:
+
+```sh
+require_once('vendor/autoload.php');
 ```
 
 ### Curves
