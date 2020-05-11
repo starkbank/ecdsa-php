@@ -22,7 +22,7 @@ require_once('vendor/autoload.php');
 
 ### Curves
 
-The module is wrapped around the builtin openssl functions, so all standar curves should be supported. The default is `secp256k1`.
+The module is wrapped around the builtin openssl functions, so all standard curves should be supported. The default is `secp256k1`.
 
 ### Speed
 
