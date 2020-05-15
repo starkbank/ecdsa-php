@@ -1,6 +1,7 @@
 <?php
 
 namespace EllipticCurve;
+use EllipticCurve\PublicKey;
 
 
 class PrivateKey {

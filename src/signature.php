@@ -24,7 +24,6 @@ class Signature {
     static function fromBase64 ($str) {
         return new Signature(base64_decode($str));
     }
-
 }
 
 ?>
