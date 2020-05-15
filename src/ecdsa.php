@@ -1,6 +1,7 @@
 <?php
 
 namespace EllipticCurve;
+use EllipticCurve\Signature;
 
 
 class Ecdsa {

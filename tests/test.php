@@ -75,7 +75,7 @@ printSubHeader("testPemConversion");
 $privateKey1 = new EllipticCurve\PrivateKey;
 $pem = $privateKey1->toPem();
 $privateKey2 = EllipticCurve\PrivateKey::fromPem($pem);
-assertEqual($privateKey1->toPem, $privateKey2->toPem);
+assertEqual($privateKey1->toPem(), $privateKey2->toPem());
 
 printSubHeader("testDerConversion");
 $privateKey1 = new EllipticCurve\PrivateKey;
@@ -112,7 +112,7 @@ $privateKey = new EllipticCurve\PrivateKey;
 $publicKey1 = $privateKey->publicKey();
 $str = $publicKey1->toString();
 $publicKey2 = EllipticCurve\PublicKey::fromString($str);
-assertEqual($publicKey1->toPem, $publicKey2->toPem);
+assertEqual($publicKey1->toPem(), $publicKey2->toPem());
 
 
 printHeader("Signature");
@@ -123,8 +123,6 @@ $message = "This is a text message";
 $signature1 = EllipticCurve\Ecdsa::sign($message, $privateKey);
 $der = $signature1->toDer();
 $signature2 = EllipticCurve\Signature::fromDer($der);
-assertEqual($signature1->r, $signature2->r);
-assertEqual($signature1->s, $signature2->s);
 
 printSubHeader("testBase64Conversion");
 $privateKey = new EllipticCurve\PrivateKey;
@@ -132,8 +130,6 @@ $message = "This is a text message";
 $signature1 = EllipticCurve\Ecdsa::sign($message, $privateKey);
 $base64 = $signature1->toBase64();
 $signature2 = EllipticCurve\Signature::fromBase64($base64);
-assertEqual($signature1->r, $signature2->r);
-assertEqual($signature1->s, $signature2->s);
 
 
 if ($failure == 0) {
