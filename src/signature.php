@@ -22,6 +22,8 @@ class Signature {
     }
 
     static function fromBase64 ($str) {
+        // Convert Base64URL to Base64 by replacing “-” with “+” and “_” with “/”
+        $str = strtr($str, '-_', '+/');
         return new Signature(base64_decode($str));
     }
 }
