@@ -1,6 +1,6 @@
 {
     "name": "starkbank/ecdsa",
-    "version": "0.0.4",
+    "version": "0.0.5",
     "type": "library",
     "description": "fast openSSL-compatible implementation of the Elliptic Curve Digital Signature Algorithm (ECDSA)",
     "homepage": "https://github.com/starkbank/ecdsa-php",

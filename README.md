@@ -2,7 +2,7 @@
 
 ### Overview
 
-This is a PHP implementation of the Elliptic Curve Digital Signature Algorithm. It is compatible with PHP 5.5+. Please note that this library relies heavily on the openssl package for PHP, so - depending on you PHP installation - you may need to re-compile it with the "–with-openssl" flag.
+This is a PHP implementation of the Elliptic Curve Digital Signature Algorithm. It is compatible with PHP 5.5+. Please note that this library relies heavily on the openssl package for PHP, so - depending on your PHP installation - you may need to re-compile it with the "–with-openssl" flag.
 
 ### Installation
 
