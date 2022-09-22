@@ -14,9 +14,12 @@
         }
     ],
     "require": {
-        "php" : ">=5.5"
+        "php" : ">=7.0"
     },
     "autoload": {
-        "files": ["src/ellipticcurve.php"]
+        "files": ["src/ellipticcurve.php"],
+        "psr-4": {
+            "EllipticCurve\\": "src/"
+        }
     }
 }
