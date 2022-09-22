@@ -13,6 +13,8 @@ Given a version number MAJOR.MINOR.PATCH, increment:
 
 
 ## [Unreleased]
+
+## [2.0.0] - 2022-09-22
 ### Changed
 - internal structure to use native php logic instead of openssl
 ### Added
