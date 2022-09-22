@@ -2,7 +2,7 @@
 
 ### Overview
 
-This is a PHP implementation of the Elliptic Curve Digital Signature Algorithm. It is compatible with PHP 5.5+. Please note that this library relies heavily on the openssl package for PHP, so - depending on your PHP installation - you may need to re-compile it with the "–with-openssl" flag.
+This is a pure PHP implementation of the Elliptic Curve Digital Signature Algorithm. It is compatible with OpenSSL and uses elegant math such as Jacobian Coordinates to spped up the ECDSA on pure PHP.
 
 ### Installation
 
@@ -22,15 +22,15 @@ require_once('vendor/autoload.php');
 
 ### Curves
 
-The module is wrapped around the builtin openssl functions, so all standar curves should be supported. The default is `secp256k1`.
+We currently support `secp256k1`, but you can add more curves to your project. You just need to use the `Curve::add()` method.
 
 ### Speed
 
-We ran a test on a MAC Pro i7 2017. We ran the library 100 times and got the average time displayed bellow:
+We ran a test on a Macbook Air M1 2020 using PHP 8.1. We ran the library 100 times and got the average time displayed bellow:
 
 | Library            | sign          | verify  |
 | ------------------ |:-------------:| -------:|
-| starkbank-ecdsa    |     0.6ms     |  0.4ms  |
+| starkbank-ecdsa    |     1.9ms     |  3.7ms  |
 
 ### Sample Code
 
@@ -95,6 +95,33 @@ $signature = EllipticCurve\Ecdsa::sign($message, $privateKey);
 
 # Verify if signature is valid
 echo "\n" . EllipticCurve\Ecdsa::verify($message, $signature, $publicKey);
+
+```
+
+How to add more curves:
+
+```php
+$newCurve = new EllipticCurve\Curve(
+    "0xf1fd178c0b3ad58f10126de8ce42435b3961adbcabc8ca6de8fcf353d86e9c00",
+    "0xee353fca5428a9300d4aba754a44c00fdfec0c9ae4b1a1803075ed967b7bb73f",
+    "0xf1fd178c0b3ad58f10126de8ce42435b3961adbcabc8ca6de8fcf353d86e9c03",
+    "0xf1fd178c0b3ad58f10126de8ce42435b53dc67e140d2bf941ffdd459c6d655e1",
+    "0xb6b3d4c356c139eb31183d4749d423958c27d2dcaf98b70164c97a2dd98f5cff",
+    "0x6142e0f7c8b204911f9271f0f3ecef8c2701c307e8e4c9e183115a1554062cfb",
+    "frp256v1",
+    array(1, 2, 250, 1, 223, 101, 256, 1)
+);
+
+EllipticCurve\Curve::add($newCurve);
+
+$publicKeyPem = "-----BEGIN PUBLIC KEY-----
+MFswFQYHKoZIzj0CAQYKKoF6AYFfZYIAAQNCAATeEFFYiQL+HmDYTf+QDmvQmWGD
+dRJPqLj11do8okvkSxq2lwB6Ct4aITMlCyg3f1msafc/ROSN/Vgj69bDhZK6
+-----END PUBLIC KEY-----";
+
+$publicKey = EllipticCurve\PublicKey::fromPem($publicKeyPem);
+
+print_r($publicKey->toPem());
 
 ```
 

@@ -1,0 +1,9 @@
+build
+composer.lock
+composer.phar
+vendor
+keys
+*.pdf
+*.png
+.idea
+*.log

@@ -1,81 +1,88 @@
 <?php
 
 namespace EllipticCurve;
+
+use Exception;
+use EllipticCurve\Curve;
+use EllipticCurve\Utils\Der;
+use EllipticCurve\Utils\Pem;
 use EllipticCurve\PublicKey;
+use EllipticCurve\Utils\Binary;
+use EllipticCurve\Utils\Integer;
+use EllipticCurve\Utils\DerFieldType;
 
 
-class PrivateKey {
-    function __construct($curve="secp256k1", $openSslPrivateKey=null) {
-        if (is_null($openSslPrivateKey)) {
-            $config = array(
-                "digest_alg" => "sha256",
-                "private_key_bits" => 2048,
-                "private_key_type" => OPENSSL_KEYTYPE_EC,
-                "curve_name" => $curve
-            );
+class PrivateKey
+{
+    private static $pemTemplate = "-----BEGIN EC PRIVATE KEY-----\n{content}\n-----END EC PRIVATE KEY-----";
+    public $curve;
+    public $secret;
 
-            $response = openssl_pkey_new($config);
-
-            openssl_pkey_export($response, $openSslPrivateKey, null, $config);
-
-            $openSslPrivateKey = openssl_pkey_get_private($openSslPrivateKey);
-        }
-
-        $this->openSslPrivateKey = $openSslPrivateKey;
+    function __construct($curve=null, $secret=null)
+    {
+        $this->curve = is_null($curve) ? Curve::$supportedCurves["secp256k1"] : $curve;
+        $this->secret = is_null($secret) ? Integer::between(1, $this->curve->N - 1) : $secret;
     }
-
-    function publicKey() {
-        $openSslPublicKey = openssl_pkey_get_details($this->openSslPrivateKey)["key"];
-
-        return new PublicKey($openSslPublicKey);
-    }
-
-    function toString () {
-        return base64_encode($this->toDer());
-    }
-
-    function toDer () {
-        $pem = $this->toPem();
     
-        $lines = array();
-        foreach(explode("\n", $pem) as $value) { 
-            if (substr($value, 0, 5) !== "-----") {
-                array_push($lines, $value);
-            }
+    function publicKey()
+    {
+        $curve = $this->curve;
+        $publicPoint = Math::multiply(
+            $curve->G,
+            $this->secret,
+            $curve->N,
+            $curve->A,
+            $curve->P
+        );
+        return new PublicKey($publicPoint, $curve);
+    }
+
+    function toString()
+    {
+        return Binary::hexFromInt($this->secret);
+    }
+
+    function toDer()
+    {
+        $publicKeyString = $this->publicKey()->toString(true);
+        $hexadecimal = Der::encodeConstructed(
+            Der::encodePrimitive(DerFieldType::$integer, 1),
+            Der::encodePrimitive(DerFieldType::$octetString, Binary::hexFromInt($this->secret)),
+            Der::encodePrimitive(DerFieldType::$oidContainer, Der::encodePrimitive(DerFieldType::$object, $this->curve->oid)),
+            Der::encodePrimitive(DerFieldType::$publicKeyPointContainer, Der::encodePrimitive(DerFieldType::$bitString, $publicKeyString))
+        );
+        return Binary::byteStringFromHex($hexadecimal);
+    }
+
+    function toPem()
+    {
+        $der = $this->toDer();
+        return Pem::create(Binary::base64FromByteString($der), self::$pemTemplate);
+    }
+
+    static function fromPem($string)
+    {
+        $privateKeyPem = Pem::getContent($string, self::$pemTemplate);
+        return PrivateKey::fromDer(Binary::byteStringFromBase64($privateKeyPem));
+    }
+
+    static function fromDer($string)
+    {
+        $hexadecimal = Binary::hexFromByteString($string);
+        list($privateKeyFlag, $secretHex, $curveData, $publicKeyString) = Der::parse($hexadecimal)[0];
+
+        if ($privateKeyFlag != 1) {
+            throw new Exception(sprintf("Private keys should start with a '1' flag, but a '%s' was found instead"), $privateKeyFlag);
         }
-
-        $pem_data = join("", $lines);
-
-        return base64_decode($pem_data);
+        $curve = Curve::getByOid($curveData[0]);
+        $privateKey = PrivateKey::fromString($secretHex, $curve);
+        if ($privateKey->publicKey()->toString(true) != $publicKeyString[0])
+            throw new Exception("The public key described inside the private key file doesn`t match the actual key of the pair");
+        return $privateKey;
     }
 
-    function toPem () {
-        openssl_pkey_export($this->openSslPrivateKey, $out, null);
-        return $out;
+    static function fromString($string, $curve=null)
+    {
+        return new PrivateKey($curve, Binary::intFromHex($string));
     }
-
-    static function fromPem ($str) {
-        $rebuilt = array();
-        foreach(explode("\n", $str) as $line) { 
-            $line = trim($line);
-            if (strlen($line) > 1) {
-                array_push($rebuilt, $line);
-            }
-        };
-        $rebuilt = join("\n", $rebuilt) . "\n";
-        return new PrivateKey(null, openssl_get_privatekey($rebuilt));
-    }
-
-    static function fromDer ($str) {
-        $pem_data = base64_encode($str);
-        $pem = "-----BEGIN EC PRIVATE KEY-----\n" . substr($pem_data, 0, 64) . "\n" . substr($pem_data, 64, 64) . "\n" . substr($pem_data, 128, 64) . "\n-----END EC PRIVATE KEY-----\n";
-        return new PrivateKey(null, openssl_get_privatekey($pem));
-    }
-
-    static function fromString ($str) {
-        return PrivateKey::fromDer(base64_decode($str));
-    }
-
 }
-
-?>
