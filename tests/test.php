@@ -2,8 +2,7 @@
 
 namespace EllipticCurve\Test;
 
-
-require_once(__DIR__."/../src/ellipticcurve.php");
+require_once(__DIR__."/../vendor/autoload.php");
 require_once("assert.php");
 
 
