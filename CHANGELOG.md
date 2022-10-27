@@ -13,6 +13,8 @@ Given a version number MAJOR.MINOR.PATCH, increment:
 
 
 ## [Unreleased]
+### Fixed
+- composer.json to map all classes
 
 ## [2.0.1] - 2022-10-26
 ### Fixed

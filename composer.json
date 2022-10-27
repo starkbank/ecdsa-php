@@ -18,6 +18,7 @@
     },
     "autoload": {
         "files": ["src/ellipticcurve.php"],
+        "classmap": ["src/"],
         "psr-4": {
             "EllipticCurve\\": "src/"
         }
