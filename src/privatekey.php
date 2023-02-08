@@ -72,7 +72,7 @@ class PrivateKey
         list($privateKeyFlag, $secretHex, $curveData, $publicKeyString) = Der::parse($hexadecimal)[0];
 
         if ($privateKeyFlag != 1) {
-            throw new Exception(sprintf("Private keys should start with a '1' flag, but a '%s' was found instead"), $privateKeyFlag);
+            throw new Exception(sprintf("Private keys should start with a '1' flag, but a '%s' was found instead", $privateKeyFlag));
         }
         $curve = Curve::getByOid($curveData[0]);
         $privateKey = PrivateKey::fromString($secretHex, $curve);
