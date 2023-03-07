@@ -14,7 +14,8 @@
         }
     ],
     "require": {
-        "php" : ">=7.0"
+        "php" : ">=7.0",
+        "ext-gmp": "*"
     },
     "autoload": {
         "files": ["src/ellipticcurve.php"],
