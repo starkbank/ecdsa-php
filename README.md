@@ -20,6 +20,9 @@ To use the bindings, use Composer's autoload:
 require_once('vendor/autoload.php');
 ```
 
+#### External dependencies
+The package makes use of the 'GNU Multiple Precision' (GMP) library. For installation details, see: https://www.php.net/manual/en/gmp.installation.php
+
 ### Curves
 
 We currently support `secp256k1`, but you can add more curves to your project. You just need to use the `Curve::add()` method.
