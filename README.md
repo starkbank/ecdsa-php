@@ -2,7 +2,7 @@
 
 ### Overview
 
-This is a pure PHP implementation of the Elliptic Curve Digital Signature Algorithm. It is compatible with OpenSSL and uses elegant math such as Jacobian Coordinates to spped up the ECDSA on pure PHP.
+This is a pure PHP implementation of the Elliptic Curve Digital Signature Algorithm. It is compatible with OpenSSL and uses elegant math such as Jacobian Coordinates to speed up the ECDSA on pure PHP.
 
 ### Installation
 
