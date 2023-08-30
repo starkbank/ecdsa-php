@@ -59,6 +59,18 @@ class Curve
         return join(".", $this->oid);
     }
 
+    function y($x, $isEven)
+    {
+        $ySquared = gmp_mod(gmp_add(gmp_add(gmp_mod(gmp_pow($x, 3), $this->P), gmp_mul($this->A, $x)), $this->B), $this->P);
+        $y = Math::modularSquareRoot($ySquared, $this->P);
+
+        if ($isEven != (gmp_intval(gmp_mod($y, 2)) == 0))
+        {
+            $y = gmp_sub($this->P, $y);
+        }
+        return $y;
+    }
+
     public static $supportedCurves = [];
     public static $_curvesByOid = [];
 

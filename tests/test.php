@@ -24,6 +24,7 @@ class TestCase
 }
 
 include_once("testPublicKey.php");
+include_once("testCompPubKey.php");
 include_once("testEcdsa.php");
 include_once("testPrivateKey.php");
 include_once("testSignature.php");

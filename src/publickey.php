@@ -14,6 +14,8 @@ class PublicKey
 {
     private static $pemTemplate = "-----BEGIN PUBLIC KEY-----\n{content}\n-----END PUBLIC KEY-----\n";
     private static $ecdsaPublicKeyOid = array(1, 2, 840, 10045, 2, 1);
+    public static $_evenTag = "02";
+    public static $_oddTag = "03";
     public $point;
     public $curve;
     
@@ -33,6 +35,21 @@ class PublicKey
             return "0004" . $string;
         }
         return $string;
+    }
+
+    function toCompressed() 
+    {
+        $baseLength = gmp_intval(2 * $this->curve->length());
+        
+        if (gmp_intval($this->point->y % 2) == 0)
+        {
+            $parityTag = self::$_evenTag;
+        } else {
+            $parityTag = self::$_oddTag;
+        }
+
+        $xHex = str_pad(Binary::hexFromInt($this->point->x), $baseLength, "0", STR_PAD_LEFT);
+        return $parityTag . $xHex;
     }
 
     function toDer()
@@ -98,5 +115,23 @@ class PublicKey
         if (!Math::multiply($p, $curve->N, $curve->N, $curve->A, $curve->P)->isAtInfinity())
             throw new Exception(sprintf("Point (%d,%d) * %s.N is not at infinity", $p->x, $p->y, $curve->name));
         return $publicKey;
+    }
+
+    static function fromCompressed($string, $curve=null)
+    {
+        $curve = is_null($curve) ? Curve::$supportedCurves["secp256k1"] : $curve;
+        $parityTag = substr($string, 0, 2);
+        $xHex = substr($string, 2, strlen($string));
+
+        if (!in_array($parityTag, array(self::$_evenTag, self::$_oddTag)))
+        {
+            throw new Exception(sprintf("Compressed string should start with 02 or 03"));
+        }
+
+        $x = Binary::intFromHex($xHex);
+        $isEven = $parityTag === self::$_evenTag;
+        $y = $curve->y($x, $isEven);
+        
+        return new PublicKey($point=new Point(Binary::intFromHex($x), Binary::intFromHex($y)), $curve=$curve);
     }
 }
