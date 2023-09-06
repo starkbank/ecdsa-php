@@ -7,6 +7,11 @@ use EllipticCurve\Utils\Integer;
 
 class Math
 {
+    public static function modularSquareRoot($value, $prime)
+    {
+        return gmp_powm($value, gmp_div_q(gmp_add($prime, 1), 4), $prime);
+    }
+
     /**
     Fast way to multiply point and scalar in elliptic curves
 
