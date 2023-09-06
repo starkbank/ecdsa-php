@@ -13,6 +13,10 @@ Given a version number MAJOR.MINOR.PATCH, increment:
 
 
 ## [Unreleased]
+### Added
+- toCompressed and fromCompressed to PublicKey resource
+- modularSquareRoot to Math resource
+- Y to curve method
 
 ## [2.0.2] - 2022-10-27
 ### Fixed
