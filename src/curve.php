@@ -1,10 +1,10 @@
 <?php
 
 /**
- * 
+ *
  * Elliptic Curve Equation
- * 
- * yˆ2 = xˆ3 + A*x + B (mod P)
+ *
+ * y^2 = x^3 + A*x + B (mod P)
  */
 
 namespace EllipticCurve;
@@ -14,7 +14,7 @@ use EllipticCurve\Utils\Binary;
 use EllipticCurve\Utils\Integer;
 
 
-class Curve
+class CurveFp
 {
     public $A, $B, $P, $N, $G, $name, $nistName, $oid;
 
@@ -31,11 +31,11 @@ class Curve
     }
 
     /**
-    Verify if the point `p` is on the curve 
+    Verify if the point `p` is on the curve
 
     ## Parameters:
         - p: Point p = Point(x, y)
-        
+
     ## Return: [boolean]
      */
     function contains($p)
@@ -83,23 +83,26 @@ class Curve
     public static function getByOid($oid)
     {
         $oidString = join(".", $oid);
-    
-        if (!array_key_exists($oidString, Curve::$_curvesByOid)) {
+
+        if (!array_key_exists($oidString, CurveFp::$_curvesByOid)) {
             $supportedCurvesNames = [];
-            foreach (Curve::$supportedCurves as $curve) {
+            foreach (CurveFp::$supportedCurves as $curve) {
                 $supportedCurvesNames[] = $curve->name;
             }
             throw new Exception(
-                sprintf("Unknown curve with oid %s; The following are registred: %s",
+                sprintf("Unknown curve with oid %s; The following are registered: %s",
                     $oidString, join(", ", $supportedCurvesNames))
             );
         }
-        return Curve::$_curvesByOid[$oidString];
+        return CurveFp::$_curvesByOid[$oidString];
     }
 }
 
+// Backward compatibility
+class Curve extends CurveFp {}
 
-$secp256k1 = new Curve(
+
+$secp256k1 = new CurveFp(
     "0x0000000000000000000000000000000000000000000000000000000000000000",
     "0x0000000000000000000000000000000000000000000000000000000000000007",
     "0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2f",
@@ -109,10 +112,10 @@ $secp256k1 = new Curve(
     "secp256k1",
     array(1, 3, 132, 0, 10)
 );
-Curve::add($secp256k1);
+CurveFp::add($secp256k1);
 
 
-$prime256v1 = new Curve(
+$prime256v1 = new CurveFp(
     "0xffffffff00000001000000000000000000000000fffffffffffffffffffffffc",
     "0x5ac635d8aa3a93e7b3ebbd55769886bc651d06b0cc53b0f63bce3c3e27d2604b",
     "0xffffffff00000001000000000000000000000000ffffffffffffffffffffffff",
@@ -123,4 +126,4 @@ $prime256v1 = new Curve(
     array(1, 2, 840, 10045, 3, 1, 7),
     "P-256"
 );
-Curve::add($prime256v1);
+CurveFp::add($prime256v1);

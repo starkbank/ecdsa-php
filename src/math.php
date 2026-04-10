@@ -7,9 +7,58 @@ use EllipticCurve\Utils\Integer;
 
 class Math
 {
+    /**
+     * Tonelli-Shanks algorithm for modular square root. Works for all odd primes.
+     */
     public static function modularSquareRoot($value, $prime)
     {
-        return gmp_powm($value, gmp_div_q(gmp_add($prime, 1), 4), $prime);
+        if ($value == 0)
+            return gmp_init(0);
+        if ($prime == 2)
+            return gmp_mod($value, 2);
+
+        // Factor out powers of 2: prime - 1 = Q * 2^S
+        $Q = $prime - 1;
+        $S = 0;
+        while (gmp_mod($Q, 2) == 0) {
+            $Q = gmp_div_q($Q, 2);
+            $S += 1;
+        }
+
+        if ($S == 1) {  // prime = 3 (mod 4)
+            return gmp_powm($value, gmp_div_q(gmp_add($prime, 1), 4), $prime);
+        }
+
+        // Find a quadratic non-residue z
+        $z = gmp_init(2);
+        while (gmp_powm($z, gmp_div_q($prime - 1, 2), $prime) != $prime - 1) {
+            $z = $z + 1;
+        }
+
+        $M = $S;
+        $c = gmp_powm($z, $Q, $prime);
+        $t = gmp_powm($value, $Q, $prime);
+        $R = gmp_powm($value, gmp_div_q($Q + 1, 2), $prime);
+
+        while (true) {
+            if ($t == 1) {
+                return $R;
+            }
+
+            // Find the least i such that t^(2^i) = 1 (mod prime)
+            $i = 1;
+            $temp = gmp_mod($t * $t, $prime);
+            while ($temp != 1) {
+                $temp = gmp_mod($temp * $temp, $prime);
+                $i += 1;
+            }
+
+            $b = gmp_powm($c, gmp_pow(2, $M - $i - 1), $prime);
+            $M = $i;
+            $c = gmp_mod($b * $b, $prime);
+            $t = gmp_mod($t * $c, $prime);
+            $R = gmp_mod($R * $b, $prime);
+        }
     }
 
     /**
@@ -21,7 +70,7 @@ class Math
         - N: Order of the elliptic curve
         - P: Prime number in the module of the equation Y^2 = X^3 + A*X + B (mod p)
         - A: Coefficient of the first-order term of the equation Y^2 = X^3 + A*X + B (mod p)
-        
+
     ## Return:
         - Point that represents the product of First Point and scalar;
      */
@@ -37,10 +86,10 @@ class Math
 
     ## Parameters:
         - p: First Point you want to add
-        - n: Second Point you want to add
+        - q: Second Point you want to add
         - P: Prime number in the module of the equation Y^2 = X^3 + A*X + B (mod p)
         - A: Coefficient of the first-order term of the equation Y^2 = X^3 + A*X + B (mod p)
-        
+
     ## Return:
         - Point that represents the sum of First and Second Point
      */
@@ -52,36 +101,45 @@ class Math
     }
 
     /**
-    Extended Euclidean Algorithm. It's the 'division' in elliptic curves
+     * Compute n1*p1 + n2*p2 using Shamir's trick (simultaneous double-and-add).
+     * Not constant-time - use only with public scalars (e.g. verification).
+     *
+     * @param Point $p1 First point
+     * @param mixed $n1 First scalar
+     * @param Point $p2 Second point
+     * @param mixed $n2 Second scalar
+     * @param mixed $N Order of the elliptic curve
+     * @param mixed $A Coefficient of the first-order term
+     * @param mixed $P Prime number in the module
+     * @return Point n1*p1 + n2*p2
+     */
+    public static function multiplyAndAdd($p1, $n1, $p2, $n2, $N, $A, $P)
+    {
+        return Math::fromJacobian(
+            Math::shamirMultiply(
+                Math::toJacobian($p1), $n1,
+                Math::toJacobian($p2), $n2,
+                $N, $A, $P
+            ), $P
+        );
+    }
 
-    ## Parameters:
-        - x: Divisor
-        - n: Mod for division
-        
-    ## Return:
-        - Value representing the division
+    /**
+     * Modular inverse using Fermat's little theorem: x^(n-2) mod n.
+     * Requires n to be prime (true for all ECDSA curve parameters).
+     * Uses PHP's gmp_powm() which has more uniform execution time
+     * than the extended Euclidean algorithm.
+     *
+     * @param mixed $x Divisor
+     * @param mixed $n Mod for division (must be prime)
+     * @return mixed Value representing the division
      */
     public static function inv($x, $n)
     {
         if ($x == 0)
             return Integer::toBigInt(0);
 
-        $lm = Integer::toBigInt(1);
-        $hm = Integer::toBigInt(0);
-        $low = Integer::modulo($x, $n);
-        $high = $n;
-
-        while ($low > 1) {
-            $r = gmp_div_q($high, $low);
-            $nm = $hm - $lm * $r;
-            $nw = $high - $low * $r;
-            $high = $low;
-            $hm = $lm;
-            $low = $nw;
-            $lm = $nm;
-        }
-
-        return Integer::modulo($lm, $n);
+        return gmp_powm($x, $n - 2, $n);
     }
 
     /**
@@ -104,12 +162,15 @@ class Math
     ## Parameters:
         - p: First Point you want to convert
         - P: Prime number in the module of the equation Y^2 = X^3 + A*X + B (mod p)
-        
+
     ## Return:
         - Point in default coordinates
      */
     private static function fromJacobian($p, $P)
     {
+        if ($p->y == 0)
+            return new Point(0, 0, 0);
+
         $z = Math::inv($p->z, $P);
         $x = Integer::modulo($p->x * $z ** 2, $P);
         $y = Integer::modulo($p->y * $z ** 3, $P);
@@ -124,21 +185,25 @@ class Math
         - p: First Point you want to double
         - P: Prime number in the module of the equation Y^2 = X^3 + A*X + B (mod p)
         - A: Coefficient of the first-order term of the equation Y^2 = X^3 + A*X + B (mod p)
-        
+
     ## Return:
         - Point that represents the sum of First Point and itself
      */
     private static function jacobianDouble($p, $A, $P)
     {
-        if ($p->y == 0)
+        $py = $p->y;
+        if ($py == 0)
             return new Point(0, 0, 0);
 
-        $ysq = Integer::modulo($p->y ** 2, $P);
-        $S = Integer::modulo(4 * $p->x * $ysq, $P);
-        $M = Integer::modulo(3 * $p->x ** 2 + $A * $p->z ** 4, $P);
-        $nx = Integer::modulo($M ** 2 - 2 * $S, $P);
-        $ny = Integer::modulo($M * ($S - $nx) - 8 * $ysq ** 2, $P);
-        $nz = Integer::modulo(2 * $p->y * $p->z, $P);
+        $px = $p->x;
+        $pz = $p->z;
+        $ysq = Integer::modulo($py * $py, $P);
+        $S = Integer::modulo(4 * $px * $ysq, $P);
+        $pz2 = Integer::modulo($pz * $pz, $P);
+        $M = Integer::modulo(3 * $px * $px + $A * $pz2 * $pz2, $P);
+        $nx = Integer::modulo($M * $M - 2 * $S, $P);
+        $ny = Integer::modulo($M * ($S - $nx) - 8 * $ysq * $ysq, $P);
+        $nz = Integer::modulo(2 * $py * $pz, $P);
 
         return new Point($nx, $ny, $nz);
     }
@@ -151,7 +216,7 @@ class Math
         - q: Second Point you want to add
         - P: Prime number in the module of the equation Y^2 = X^3 + A*X + B (mod p)
         - A: Coefficient of the first-order term of the equation Y^2 = X^3 + A*X + B (mod p)
-        
+
     ## Return:
         - Point that represents the sum of First and Second Point
      */
@@ -162,10 +227,15 @@ class Math
         if ($q->y == 0)
             return $p;
 
-        $U1 = Integer::modulo($p->x * $q->z ** 2, $P);
-        $U2 = Integer::modulo($q->x * $p->z ** 2, $P);
-        $S1 = Integer::modulo($p->y * $q->z ** 3, $P);
-        $S2 = Integer::modulo($q->y * $p->z ** 3, $P);
+        $px = $p->x; $py = $p->y; $pz = $p->z;
+        $qx = $q->x; $qy = $q->y; $qz = $q->z;
+
+        $qz2 = Integer::modulo($qz * $qz, $P);
+        $pz2 = Integer::modulo($pz * $pz, $P);
+        $U1 = Integer::modulo($px * $qz2, $P);
+        $U2 = Integer::modulo($qx * $pz2, $P);
+        $S1 = Integer::modulo($py * $qz2 * $qz, $P);
+        $S2 = Integer::modulo($qy * $pz2 * $pz, $P);
 
         if ($U1 == $U2) {
             if ($S1 != $S2)
@@ -180,45 +250,81 @@ class Math
         $U1H2 = Integer::modulo($U1 * $H2, $P);
         $nx = Integer::modulo($R ** 2 - $H3 - 2 * $U1H2, $P);
         $ny = Integer::modulo($R * ($U1H2 - $nx) - $S1 * $H3, $P);
-        $nz = Integer::modulo($H * $p->z * $q->z, $P);
+        $nz = Integer::modulo($H * $pz * $qz, $P);
 
         return new Point($nx, $ny, $nz);
     }
 
     /**
-    Multiply point and scalar in elliptic curves
-
-    ## Parameters:
-        - p: First Point you want to multiply
-        - n: Scalar to mutiply
-        - N: Order of the elliptic curve
-        - P: Prime number in the module of the equation Y^2 = X^3 + A*X + B (mod p)
-        - A: Coefficient of the first-order term of the equation Y^2 = X^3 + A*X + B (mod p)
-        
-    ## Return:
-        - Point that represents the product of First Point and scalar;
+     * Multiply point and scalar in elliptic curves using Montgomery ladder
+     * for constant-time execution.
+     *
+     * @param Point $p First Point to multiply
+     * @param mixed $n Scalar to multiply
+     * @param mixed $N Order of the elliptic curve
+     * @param mixed $P Prime number in the module
+     * @param mixed $A Coefficient of the first-order term
+     * @return Point that represents the scalar multiplication
      */
     private static function jacobianMultiply($p, $n, $N, $A, $P)
     {
         if ($p->y == 0 or $n == 0)
             return new Point(0, 0, 1);
 
-        if ($n == 1)
-            return $p;
-        
         if ($n < 0 or $n >= $N) {
-            return Math::jacobianMultiply($p, Integer::modulo($n, $N), $N, $A, $P);
-        }
-            
-        if (Integer::modulo($n, 2) == 0) {
-            $divisao = gmp_div_q($n, 2);
-            return Math::jacobianDouble(
-                Math::jacobianMultiply($p, $divisao, $N, $A, $P), $A, $P
-            );
+            $n = Integer::modulo($n, $N);
         }
 
-        return Math::jacobianAdd(
-            Math::jacobianDouble(Math::jacobianMultiply($p, gmp_div_q($n, 2), $N, $A, $P), $A, $P), $p, $A, $P
-        );
+        if ($n == 0)
+            return new Point(0, 0, 1);
+
+        // Montgomery ladder: always performs one add and one double per bit
+        $r0 = new Point(0, 0, 1);
+        $r1 = new Point($p->x, $p->y, $p->z);
+
+        $bitLen = Integer::bitLength($n);
+        for ($i = $bitLen - 1; $i >= 0; $i--) {
+            if (gmp_testbit($n, $i) == 0) {
+                $r1 = Math::jacobianAdd($r0, $r1, $A, $P);
+                $r0 = Math::jacobianDouble($r0, $A, $P);
+            } else {
+                $r0 = Math::jacobianAdd($r0, $r1, $A, $P);
+                $r1 = Math::jacobianDouble($r1, $A, $P);
+            }
+        }
+
+        return $r0;
+    }
+
+    /**
+     * Compute n1*p1 + n2*p2 using Shamir's trick (simultaneous double-and-add).
+     * Not constant-time - use only with public scalars (e.g. verification).
+     */
+    private static function shamirMultiply($jp1, $n1, $jp2, $n2, $N, $A, $P)
+    {
+        if ($n1 < 0 or $n1 >= $N) {
+            $n1 = Integer::modulo($n1, $N);
+        }
+        if ($n2 < 0 or $n2 >= $N) {
+            $n2 = Integer::modulo($n2, $N);
+        }
+
+        $jp1p2 = Math::jacobianAdd($jp1, $jp2, $A, $P);
+
+        $l = max(Integer::bitLength($n1), Integer::bitLength($n2));
+        $r = new Point(0, 0, 1);
+
+        for ($i = $l - 1; $i >= 0; $i--) {
+            $r = Math::jacobianDouble($r, $A, $P);
+            $b1 = gmp_testbit($n1, $i) ? 1 : 0;
+            $b2 = gmp_testbit($n2, $i) ? 1 : 0;
+            if ($b1) {
+                $r = Math::jacobianAdd($r, $b2 ? $jp1p2 : $jp1, $A, $P);
+            } elseif ($b2) {
+                $r = Math::jacobianAdd($r, $jp2, $A, $P);
+            }
+        }
+
+        return $r;
     }
 }

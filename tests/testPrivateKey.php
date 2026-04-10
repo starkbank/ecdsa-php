@@ -10,13 +10,13 @@ echo "\n\nRunning Private Key tests:";
 
 class TestPrivateKey extends TestCase
 {
-    public function testStringConversion()
+    public function testPemConversion()
     {
         $privateKey1 = new \EllipticCurve\PrivateKey();
-        $string = $privateKey1->toString();
-        $privateKey2 = \EllipticCurve\PrivateKey::fromString($string);
-        \Test\assertEqual($privateKey1->secret, $privateKey2->secret);
-        \Test\assertEqual($privateKey1->curve, $privateKey2->curve);
+        $pem = $privateKey1->toPem();
+        $privateKey2 = \EllipticCurve\PrivateKey::fromPem($pem);
+        \Test\assertTrue($privateKey1->secret == $privateKey2->secret, "secret mismatch");
+        \Test\assertTrue($privateKey1->curve->name == $privateKey2->curve->name, "curve mismatch");
     }
 
     public function testDerConversion()
@@ -24,19 +24,18 @@ class TestPrivateKey extends TestCase
         $privateKey1 = new \EllipticCurve\PrivateKey();
         $der = $privateKey1->toDer();
         $privateKey2 = \EllipticCurve\PrivateKey::fromDer($der);
-        \Test\assertEqual($privateKey1->secret, $privateKey2->secret);
-        \Test\assertEqual($privateKey1->curve, $privateKey2->curve);
+        \Test\assertTrue($privateKey1->secret == $privateKey2->secret, "secret mismatch");
+        \Test\assertTrue($privateKey1->curve->name == $privateKey2->curve->name, "curve mismatch");
     }
 
-    public function testPemConversion()
+    public function testStringConversion()
     {
         $privateKey1 = new \EllipticCurve\PrivateKey();
-        $pem = $privateKey1->toPem();
-        $privateKey2 = \EllipticCurve\PrivateKey::fromPem($pem);
-        \Test\assertEqual($privateKey1->secret, $privateKey2->secret);
-        \Test\assertEqual($privateKey1->curve, $privateKey2->curve);
+        $string = $privateKey1->toString();
+        $privateKey2 = \EllipticCurve\PrivateKey::fromString($string);
+        \Test\assertTrue($privateKey1->secret == $privateKey2->secret, "secret mismatch");
+        \Test\assertTrue($privateKey1->curve->name == $privateKey2->curve->name, "curve mismatch");
     }
-    
 }
 
 

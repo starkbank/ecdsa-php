@@ -29,9 +29,16 @@ class Binary
         return hex2bin($hexadecimal);
     }
 
-    public static function numberFromByteString($byteString)
+    public static function numberFromByteString($byteString, $bitLength=null)
     {
-        return Binary::intFromHex(Binary::hexFromByteString($byteString));
+        $number = Binary::intFromHex(Binary::hexFromByteString($byteString));
+        if ($bitLength !== null) {
+            $hashBitLen = strlen($byteString) * 8;
+            if ($hashBitLen > $bitLength) {
+                $number = gmp_div_q($number, gmp_pow(2, $hashBitLen - $bitLength));
+            }
+        }
+        return $number;
     }
 
     public static function base64FromByteString($byteString)

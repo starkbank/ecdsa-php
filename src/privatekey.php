@@ -3,7 +3,7 @@
 namespace EllipticCurve;
 
 use Exception;
-use EllipticCurve\Curve;
+use EllipticCurve\CurveFp;
 use EllipticCurve\Utils\Der;
 use EllipticCurve\Utils\Pem;
 use EllipticCurve\PublicKey;
@@ -20,10 +20,10 @@ class PrivateKey
 
     function __construct($curve=null, $secret=null)
     {
-        $this->curve = is_null($curve) ? Curve::$supportedCurves["secp256k1"] : $curve;
-        $this->secret = is_null($secret) ? Integer::between(1, $this->curve->N - 1) : $secret;
+        $this->curve = is_null($curve) ? CurveFp::$supportedCurves["secp256k1"] : $curve;
+        $this->secret = is_null($secret) ? Integer::between(1, $this->curve->N - 1) : Integer::toBigInt($secret);
     }
-    
+
     function publicKey()
     {
         $curve = $this->curve;
@@ -72,9 +72,9 @@ class PrivateKey
         list($privateKeyFlag, $secretHex, $curveData, $publicKeyString) = Der::parse($hexadecimal)[0];
 
         if ($privateKeyFlag != 1) {
-            throw new Exception(sprintf("Private keys should start with a '1' flag, but a '%s' was found instead"), $privateKeyFlag);
+            throw new Exception(sprintf("Private keys should start with a '1' flag, but a '%s' was found instead", $privateKeyFlag));
         }
-        $curve = Curve::getByOid($curveData[0]);
+        $curve = CurveFp::getByOid($curveData[0]);
         $privateKey = PrivateKey::fromString($secretHex, $curve);
         if ($privateKey->publicKey()->toString(true) != $publicKeyString[0])
             throw new Exception("The public key described inside the private key file doesn`t match the actual key of the pair");

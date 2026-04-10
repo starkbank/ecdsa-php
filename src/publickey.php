@@ -5,7 +5,7 @@ namespace EllipticCurve;
 use Exception;
 use EllipticCurve\Utils\Der;
 use EllipticCurve\Utils\Pem;
-use EllipticCurve\Curve;
+use EllipticCurve\CurveFp;
 use EllipticCurve\Utils\Binary;
 use EllipticCurve\Utils\DerFieldType;
 
@@ -18,7 +18,7 @@ class PublicKey
     private static $oddTag = "03";
     public $point;
     public $curve;
-    
+
     function __construct($point, $curve)
     {
         $this->point = $point;
@@ -37,10 +37,10 @@ class PublicKey
         return $string;
     }
 
-    function toCompressed() 
+    function toCompressed()
     {
         $baseLength = gmp_intval(2 * $this->curve->length());
-        
+
         if (gmp_intval($this->point->y % 2) == 0)
         {
             $parityTag = self::$evenTag;
@@ -86,13 +86,13 @@ class PublicKey
                 self::$ecdsaPublicKeyOid, $publicKeyOid)
             );
         }
-        $curve = Curve::getByOid($curveOid);
+        $curve = CurveFp::getByOid($curveOid);
         return PublicKey::fromString($pointString, $curve);
     }
 
     static function fromString($string, $curve=null, $validatePoint=true)
     {
-        $curve = is_null($curve) ? Curve::$supportedCurves["secp256k1"] : $curve;
+        $curve = is_null($curve) ? CurveFp::$supportedCurves["secp256k1"] : $curve;
         $baseLength = gmp_intval(2 * $curve->length());
         if ((strlen($string) > 2 * $baseLength) and (substr($string, 0, 4) == "0004")) {
             $string = substr($string, 4);
@@ -111,17 +111,17 @@ class PublicKey
         if ($p->isAtInfinity())
             throw new Exception("Public Key point is at infinity");
         if (!$curve->contains($p))
-            throw new Exception(sprintf("Point (%d,%d) is not valid for curve %s", $p->x, $p->y, $curve->name));
+            throw new Exception(sprintf("Point (%s,%s) is not valid for curve %s", gmp_strval($p->x), gmp_strval($p->y), $curve->name));
         if (!Math::multiply($p, $curve->N, $curve->N, $curve->A, $curve->P)->isAtInfinity())
-            throw new Exception(sprintf("Point (%d,%d) * %s.N is not at infinity", $p->x, $p->y, $curve->name));
+            throw new Exception(sprintf("Point (%s,%s) * %s.N is not at infinity", gmp_strval($p->x), gmp_strval($p->y), $curve->name));
         return $publicKey;
     }
 
     static function fromCompressed($string, $curve=null)
     {
-        $curve = is_null($curve) ? Curve::$supportedCurves["secp256k1"] : $curve;
+        $curve = is_null($curve) ? CurveFp::$supportedCurves["secp256k1"] : $curve;
         $parityTag = substr($string, 0, 2);
-        $xHex = substr($string, 2, strlen($string));
+        $xHex = substr($string, 2);
 
         if (!in_array($parityTag, array(self::$evenTag, self::$oddTag)))
         {
@@ -131,7 +131,7 @@ class PublicKey
         $x = Binary::intFromHex($xHex);
         $isEven = $parityTag === self::$evenTag;
         $y = $curve->y($x, $isEven);
-        
-        return new PublicKey($point=new Point(Binary::intFromHex($x), Binary::intFromHex($y)), $curve=$curve);
+
+        return new PublicKey(new Point($x, $y), $curve);
     }
 }

@@ -19,7 +19,7 @@ class TestEcdsa extends TestCase
 
         $message = "This is the right message";
         $signature = \EllipticCurve\Ecdsa::sign($message, $privateKey);
-        \Test\assertEqual(\EllipticCurve\Ecdsa::verify($message, $signature, $publicKey), true);
+        \Test\assertTrue(\EllipticCurve\Ecdsa::verify($message, $signature, $publicKey));
     }
 
     public function testVerifyWrongMessage()
@@ -30,7 +30,7 @@ class TestEcdsa extends TestCase
         $message1 = "This is the right message";
         $message2 = "This is the wrong message";
         $signature = \EllipticCurve\Ecdsa::sign($message1, $privateKey);
-        \Test\assertEqual(\EllipticCurve\Ecdsa::verify($message2, $signature, $publicKey), false);
+        \Test\assertFalse(\EllipticCurve\Ecdsa::verify($message2, $signature, $publicKey));
     }
 
 
@@ -40,7 +40,7 @@ class TestEcdsa extends TestCase
         $publicKey = $privateKey->publicKey();
 
         $message = "This is the wrong message";
-        \Test\assertEqual(\EllipticCurve\Ecdsa::verify($message, new Signature(0, 0), $publicKey), false);
+        \Test\assertFalse(\EllipticCurve\Ecdsa::verify($message, new Signature(0, 0), $publicKey));
     }
 }
 

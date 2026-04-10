@@ -93,7 +93,7 @@ class Der
         if ($size < 128)
             return str_pad($length, 2, "0", STR_PAD_LEFT);
         $lengthLength = 128 + intdiv(strlen($length), 2);
-        return Binary::hexFromInt($lengthLength) + $length;
+        return Binary::hexFromInt($lengthLength) . $length;
     }
     
     private static function getTagData($tag)
