@@ -7,6 +7,8 @@ use EllipticCurve\Utils\Integer;
 
 class Math
 {
+    const GENERATOR_WINDOW_BITS = 4;
+
     /**
      * Tonelli-Shanks algorithm for modular square root. Works for all odd primes.
      */
@@ -82,6 +84,68 @@ class Math
     }
 
     /**
+     * Fast scalar multiplication n*G where G is the curve generator, using
+     * a precomputed window table (2^w-ary method). Roughly 2-3x faster
+     * than variable-base multiplication because doublings stay cheap and
+     * additions use pre-stored multiples of G.
+     *
+     * @param CurveFp $curve Elliptic curve with generator G
+     * @param mixed $n Scalar multiplier
+     * @return Point n*G
+     */
+    public static function multiplyGenerator($curve, $n)
+    {
+        if ($n < 0 or $n >= $curve->N) {
+            $n = Integer::modulo($n, $curve->N);
+        }
+        if ($n == 0) {
+            return new Point(0, 0, 0);
+        }
+
+        $table = Math::generatorTable($curve);
+        $w = Math::GENERATOR_WINDOW_BITS;
+        $mask = (1 << $w) - 1;
+        $A = $curve->A;
+        $P = $curve->P;
+
+        $r = new Point(0, 0, 1);  // Jacobian infinity (y=0 triggers early-return in add)
+        $startBit = intdiv($curve->nBitLength - 1, $w) * $w;
+        for ($bit = $startBit; $bit >= 0; $bit -= $w) {
+            for ($j = 0; $j < $w; $j++) {
+                $r = Math::jacobianDouble($r, $A, $P);
+            }
+            $window = 0;
+            for ($k = 0; $k < $w; $k++) {
+                if (gmp_testbit($n, $bit + $k)) {
+                    $window |= (1 << $k);
+                }
+            }
+            if ($window) {
+                $r = Math::jacobianAdd($r, $table[$window], $A, $P);
+            }
+        }
+        return Math::fromJacobian($r, $P);
+    }
+
+    private static function generatorTable($curve)
+    {
+        if ($curve->_generatorTable !== null) {
+            return $curve->_generatorTable;
+        }
+        $w = Math::GENERATOR_WINDOW_BITS;
+        $A = $curve->A;
+        $P = $curve->P;
+        $G = new Point($curve->G->x, $curve->G->y, 1);
+        $table = [new Point(0, 0, 1), $G];
+        $size = (1 << $w);
+        for ($i = 2; $i < $size; $i++) {
+            $table[] = Math::jacobianAdd($table[$i - 1], $G, $A, $P);
+        }
+        $curve->_generatorTable = $table;
+        return $table;
+    }
+
+    /**
     Fast way to add two points in elliptic curves
 
     ## Parameters:
@@ -125,13 +189,11 @@ class Math
     }
 
     /**
-     * Modular inverse using Fermat's little theorem: x^(n-2) mod n.
-     * Requires n to be prime (true for all ECDSA curve parameters).
-     * Uses PHP's gmp_powm() which has more uniform execution time
-     * than the extended Euclidean algorithm.
+     * Modular inverse via extended Euclidean algorithm (gmp_invert, implemented in C).
+     * Roughly 2-3x faster than Fermat's little theorem for 256-bit operands.
      *
-     * @param mixed $x Divisor
-     * @param mixed $n Mod for division (must be prime)
+     * @param mixed $x Divisor (must be coprime to n)
+     * @param mixed $n Mod for division
      * @return mixed Value representing the division
      */
     public static function inv($x, $n)
@@ -139,7 +201,7 @@ class Math
         if ($x == 0)
             return Integer::toBigInt(0);
 
-        return gmp_powm($x, $n - 2, $n);
+        return gmp_invert($x, $n);
     }
 
     /**
@@ -200,7 +262,13 @@ class Math
         $ysq = Integer::modulo($py * $py, $P);
         $S = Integer::modulo(4 * $px * $ysq, $P);
         $pz2 = Integer::modulo($pz * $pz, $P);
-        $M = Integer::modulo(3 * $px * $px + $A * $pz2 * $pz2, $P);
+        if ($A == 0) {
+            $M = Integer::modulo(3 * $px * $px, $P);
+        } elseif ($A == $P - 3) {
+            $M = Integer::modulo(3 * ($px - $pz2) * ($px + $pz2), $P);
+        } else {
+            $M = Integer::modulo(3 * $px * $px + $A * $pz2 * $pz2, $P);
+        }
         $nx = Integer::modulo($M * $M - 2 * $S, $P);
         $ny = Integer::modulo($M * ($S - $nx) - 8 * $ysq * $ysq, $P);
         $nz = Integer::modulo(2 * $py * $pz, $P);

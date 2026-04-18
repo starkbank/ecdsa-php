@@ -16,7 +16,8 @@ use EllipticCurve\Utils\Integer;
 
 class CurveFp
 {
-    public $A, $B, $P, $N, $G, $name, $nistName, $oid;
+    public $A, $B, $P, $N, $G, $name, $nistName, $oid, $nBitLength;
+    public $_generatorTable = null;
 
     function __construct($A, $B, $P, $N, $Gx, $Gy, $name, $oid, $nistName=null)
     {
@@ -28,6 +29,7 @@ class CurveFp
         $this->name = $name;
         $this->nistName = $nistName;
         $this->oid = $oid;
+        $this->nBitLength = Integer::bitLength($this->N);
     }
 
     /**

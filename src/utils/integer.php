@@ -81,7 +81,7 @@ class Integer
      */
     public static function rfc6979($hashBytes, $secret, $curve, $hashfunc)
     {
-        $orderBitLen = Integer::bitLength($curve->N);
+        $orderBitLen = $curve->nBitLength;
         $orderByteLen = intdiv($orderBitLen + 7, 8);
 
         $secretHex = str_pad(Binary::hexFromInt($secret), $orderByteLen * 2, "0", STR_PAD_LEFT);

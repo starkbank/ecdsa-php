@@ -13,7 +13,7 @@ class Ecdsa
     {
         $curve = $privateKey->curve;
         $byteMessage = hash($hashfunc, $message, true);
-        $numberMessage = Binary::numberFromByteString($byteMessage, Integer::bitLength($curve->N));
+        $numberMessage = Binary::numberFromByteString($byteMessage, $curve->nBitLength);
 
         $r = Integer::toBigInt(0);
         $s = Integer::toBigInt(0);
@@ -23,7 +23,7 @@ class Ecdsa
         while ($r == 0 or $s == 0) {
             $randNum = $kIterator->current();
             $kIterator->next();
-            $randSignPoint = Math::multiply($curve->G, $randNum, $curve->N, $curve->A, $curve->P);
+            $randSignPoint = Math::multiplyGenerator($curve, $randNum);
             $r = Integer::modulo($randSignPoint->x, $curve->N);
             $s = Integer::modulo(($numberMessage + $r * $privateKey->secret) * (Math::inv($randNum, $curve->N)), $curve->N);
         }
@@ -43,7 +43,7 @@ class Ecdsa
     {
         $byteMessage = hash($hashfunc, $message, true);
         $curve = $publicKey->curve;
-        $numberMessage = Binary::numberFromByteString($byteMessage, Integer::bitLength($curve->N));
+        $numberMessage = Binary::numberFromByteString($byteMessage, $curve->nBitLength);
 
         $r = $signature->r;
         $s = $signature->s;

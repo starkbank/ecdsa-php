@@ -13,7 +13,6 @@ starkbank-ecdsa includes the following security features:
 - **Public key on-curve validation**: Blocks invalid-curve attacks during verification
 - **Montgomery ladder scalar multiplication**: Constant-operation point multiplication to mitigate timing side channels
 - **Hash truncation**: Correctly handles hash functions larger than the curve order (e.g. SHA-512 with secp256k1)
-- **Fermat's little theorem for modular inverse**: More uniform execution time than the extended Euclidean algorithm
 
 ### Installation
 
@@ -44,9 +43,9 @@ We ran a test on a MAC Pro using PHP 8.5. The library was run 100 times and the 
 
 | Library            | sign          | verify  |
 | ------------------ |:-------------:| -------:|
-| starkbank-ecdsa    |     1.6ms     |  1.4ms  |
+| starkbank-ecdsa    |     0.8ms     |  1.3ms  |
 
-The library uses Jacobian Coordinates, a Montgomery ladder for constant-time scalar multiplication, and Shamir's trick for fast signature verification.
+Performance is driven by Jacobian coordinates, a branch-balanced Montgomery ladder for variable-base scalar multiplication, a precomputed window table (2^4-ary method) for the fixed generator used in signing, curve-specific shortcuts in point doubling (A=0 for secp256k1, A=-3 for prime256v1), Shamir's trick for combined scalar multiplication during verification, and the extended Euclidean algorithm for modular inversion.
 
 ### Sample Code
 
