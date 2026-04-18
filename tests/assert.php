@@ -4,30 +4,26 @@ namespace Test;
 
 $success = 0;
 $failure = 0;
-$testNames = [];
+$currentTestFailed = false;
 
 function assertEqual($a, $b, $message="") {
     if ($a != $b) {
-        global $failure;
-        $failure ++;
+        global $currentTestFailed;
+        $currentTestFailed = true;
         $msg = $message ? $message : "'" . print_r($a, true) . "' != '" . print_r($b, true) . "'";
         echo "\n      FAIL: " . $msg;
     } else {
-        global $success;
-        $success ++;
         echo "\n      success";
     }
 }
 
 function assertNotEqual($a, $b, $message="") {
     if ($a == $b) {
-        global $failure;
-        $failure ++;
+        global $currentTestFailed;
+        $currentTestFailed = true;
         $msg = $message ? $message : "'" . print_r($a, true) . "' == '" . print_r($b, true) . "'";
         echo "\n      FAIL: " . $msg;
     } else {
-        global $success;
-        $success ++;
         echo "\n      success";
     }
 }
@@ -43,17 +39,15 @@ function assertFalse($a, $message="") {
 function assertThrows($callable, $expectedMessage=null) {
     try {
         $callable();
-        global $failure;
-        $failure ++;
+        global $currentTestFailed;
+        $currentTestFailed = true;
         echo "\n      FAIL: expected exception but none was thrown";
     } catch (\Exception $e) {
         if ($expectedMessage !== null && strpos($e->getMessage(), $expectedMessage) === false) {
-            global $failure;
-            $failure ++;
+            global $currentTestFailed;
+            $currentTestFailed = true;
             echo "\n      FAIL: exception message '" . $e->getMessage() . "' does not contain '" . $expectedMessage . "'";
         } else {
-            global $success;
-            $success ++;
             echo "\n      success";
         }
     }

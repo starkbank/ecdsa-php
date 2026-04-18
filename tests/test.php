@@ -17,7 +17,13 @@ class TestCase
         foreach($methods as $method) {
             if ($method != "__construct" and $method != "run" and strpos($method, "test") === 0) {
                 \Test\printSubHeader($method);
+                $GLOBALS["currentTestFailed"] = false;
                 $this->{$method}();
+                if ($GLOBALS["currentTestFailed"]) {
+                    $GLOBALS["failure"]++;
+                } else {
+                    $GLOBALS["success"]++;
+                }
             }
         }
     }
