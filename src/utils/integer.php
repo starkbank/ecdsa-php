@@ -66,7 +66,10 @@ class Integer
     }
 
     /**
-     * Generate deterministic nonce values per RFC 6979
+     * Generate nonce values via hedged RFC 6979: deterministic k derivation
+     * with fresh random entropy mixed into K-init (hedged RFC 6979 §3.6).
+     * Same message and key yield different signatures, while preserving
+     * RFC 6979's protection against RNG failures.
      *
      * Returns a Generator that yields nonce values.
      *
@@ -88,13 +91,17 @@ class Integer
         $hashHex = str_pad(Binary::hexFromInt($hashReduced), $orderByteLen * 2, "0", STR_PAD_LEFT);
         $hashOctets = Binary::byteStringFromHex($hashHex);
 
+        $extraEntropyMax = gmp_sub(gmp_pow(2, $orderByteLen * 8), 1);
+        $extraEntropyHex = str_pad(Binary::hexFromInt(Integer::between(0, $extraEntropyMax)), $orderByteLen * 2, "0", STR_PAD_LEFT);
+        $extraEntropy = Binary::byteStringFromHex($extraEntropyHex);
+
         $hLen = strlen(hash($hashfunc, "", true));
         $V = str_repeat("\x01", $hLen);
         $K = str_repeat("\x00", $hLen);
 
-        $K = hash_hmac($hashfunc, $V . "\x00" . $secretBytes . $hashOctets, $K, true);
+        $K = hash_hmac($hashfunc, $V . "\x00" . $secretBytes . $hashOctets . $extraEntropy, $K, true);
         $V = hash_hmac($hashfunc, $V, $K, true);
-        $K = hash_hmac($hashfunc, $V . "\x01" . $secretBytes . $hashOctets, $K, true);
+        $K = hash_hmac($hashfunc, $V . "\x01" . $secretBytes . $hashOctets . $extraEntropy, $K, true);
         $V = hash_hmac($hashfunc, $V, $K, true);
 
         while (true) {

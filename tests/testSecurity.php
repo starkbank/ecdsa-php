@@ -18,11 +18,11 @@ echo "\n\nRunning Security tests:";
 
 
 // ============================================================================
-// RFC 6979 Known Answer Tests (prime256v1/SHA-256)
+// Prime256v1 Public Key Derivation (RFC 6979 A.2.5 key material)
 // ============================================================================
-\Test\printHeader("RFC 6979 Known Answer (prime256v1)");
+\Test\printHeader("Prime256v1 Public Key Derivation");
 
-class TestRfc6979KnownAnswer extends TestCase
+class TestPrime256v1PublicKeyDerivation extends TestCase
 {
     private $privateKey;
     private $publicKey;
@@ -48,49 +48,33 @@ class TestRfc6979KnownAnswer extends TestCase
         );
     }
 
-    public function testSampleMessageSignature()
+    public function testSampleMessageRoundTrip()
     {
+        $prime256v1 = CurveFp::$supportedCurves["prime256v1"];
         $sig = Ecdsa::sign("sample", $this->privateKey);
-        // r matches RFC 6979 A.2.5 exactly
-        \Test\assertTrue(
-            $sig->r == gmp_init("0xEFD48B2AACB6A8FD1140DD9CD45E81D69D2C877B56AAF991C34D0EA84EAF3716"),
-            "r mismatch for 'sample'"
-        );
-        // s is low-S normalized: N - 0xF7CB1C942D657C41D436C7A1B6E29F65F3E900DBB9AFF4064DC4AB2F843ACDA8
-        \Test\assertTrue(
-            $sig->s == gmp_init("0x0834E36AD29A83BF2BC9385E491D6099C8FDF9D1ED67AA7EA5F51F93782857A9"),
-            "s mismatch for 'sample'"
-        );
+        \Test\assertTrue($sig->s <= gmp_div_q($prime256v1->N, 2), "s should be low");
         \Test\assertTrue(Ecdsa::verify("sample", $sig, $this->publicKey), "verify failed for 'sample'");
     }
 
-    public function testTestMessageSignature()
+    public function testTestMessageRoundTrip()
     {
+        $prime256v1 = CurveFp::$supportedCurves["prime256v1"];
         $sig = Ecdsa::sign("test", $this->privateKey);
-        // r matches RFC 6979 A.2.5 exactly
-        \Test\assertTrue(
-            $sig->r == gmp_init("0xF1ABB023518351CD71D881567B1EA663ED3EFCF6C5132B354F28D3B0B7D38367"),
-            "r mismatch for 'test'"
-        );
-        // s already low-S, matches RFC directly
-        \Test\assertTrue(
-            $sig->s == gmp_init("0x019F4113742A2B14BD25926B49C649155F267E60D3814B4C0CC84250E46F0083"),
-            "s mismatch for 'test'"
-        );
+        \Test\assertTrue($sig->s <= gmp_div_q($prime256v1->N, 2), "s should be low");
         \Test\assertTrue(Ecdsa::verify("test", $sig, $this->publicKey), "verify failed for 'test'");
     }
 }
 
-$tests = new TestRfc6979KnownAnswer();
+$tests = new TestPrime256v1PublicKeyDerivation();
 $tests->run();
 
 
 // ============================================================================
-// Secp256k1 Known Answer Tests
+// Secp256k1 Public Key Derivation
 // ============================================================================
-\Test\printHeader("Secp256k1 Known Answer");
+\Test\printHeader("Secp256k1 Public Key Derivation");
 
-class TestSecp256k1KnownAnswer extends TestCase
+class TestSecp256k1PublicKeyDerivation extends TestCase
 {
     private $privateKey;
     private $publicKey;
@@ -108,36 +92,20 @@ class TestSecp256k1KnownAnswer extends TestCase
         \Test\assertTrue($this->publicKey->point->y == $secp256k1->G->y, "y mismatch");
     }
 
-    public function testSampleMessageSignature()
+    public function testSampleMessageRoundTrip()
     {
         $sig = Ecdsa::sign("sample", $this->privateKey);
-        \Test\assertTrue(
-            $sig->r == gmp_init("0x58DB657BCD631038BEA07B4941172F0167ACA98F12B55E3176BD1C35435D6501"),
-            "r mismatch"
-        );
-        \Test\assertTrue(
-            $sig->s == gmp_init("0x3A78E73D8FF8AB554E13C10F6390D81A882F91945D6275493882676170B53A57"),
-            "s mismatch"
-        );
         \Test\assertTrue(Ecdsa::verify("sample", $sig, $this->publicKey), "verify failed");
     }
 
-    public function testTestMessageSignature()
+    public function testTestMessageRoundTrip()
     {
         $sig = Ecdsa::sign("test", $this->privateKey);
-        \Test\assertTrue(
-            $sig->r == gmp_init("0x98DF3AAED18D1299109E9732E3015F7E68E5D1FDEAD6924809B410D970A3B0CE"),
-            "r mismatch"
-        );
-        \Test\assertTrue(
-            $sig->s == gmp_init("0x3EF15987C6592379BAAD6392586A382D63952572632FCD951AE75E7471C144C6"),
-            "s mismatch"
-        );
         \Test\assertTrue(Ecdsa::verify("test", $sig, $this->publicKey), "verify failed");
     }
 }
 
-$tests = new TestSecp256k1KnownAnswer();
+$tests = new TestSecp256k1PublicKeyDerivation();
 $tests->run();
 
 
@@ -301,13 +269,13 @@ $tests->run();
 
 
 // ============================================================================
-// RFC 6979 Tests
+// Hedged Signature Tests
 // ============================================================================
-\Test\printHeader("RFC 6979");
+\Test\printHeader("Hedged Signature");
 
-class TestRfc6979 extends TestCase
+class TestHedgedSignature extends TestCase
 {
-    public function testDeterministicSignature()
+    public function testSameInputsProduceDifferentSignatures()
     {
         $privateKey = new PrivateKey();
         $message = "test message";
@@ -315,8 +283,7 @@ class TestRfc6979 extends TestCase
         $signature1 = Ecdsa::sign($message, $privateKey);
         $signature2 = Ecdsa::sign($message, $privateKey);
 
-        \Test\assertTrue($signature1->r == $signature2->r, "r not deterministic");
-        \Test\assertTrue($signature1->s == $signature2->s, "s not deterministic");
+        \Test\assertTrue($signature1->r != $signature2->r || $signature1->s != $signature2->s, "hedged signatures should differ for same inputs");
     }
 
     public function testDifferentMessagesDifferentSignatures()
@@ -340,7 +307,7 @@ class TestRfc6979 extends TestCase
     }
 }
 
-$tests = new TestRfc6979();
+$tests = new TestHedgedSignature();
 $tests->run();
 
 
@@ -606,7 +573,7 @@ class TestHashTruncation extends TestCase
         \Test\assertFalse(Ecdsa::verify("wrong message", $signature, $publicKey, "sha512"), "wrong message should fail");
     }
 
-    public function testSha512DeterministicSignature()
+    public function testSha512SignaturesAreHedged()
     {
         $privateKey = new PrivateKey();
         $message = "test message";
@@ -614,8 +581,7 @@ class TestHashTruncation extends TestCase
         $signature1 = Ecdsa::sign($message, $privateKey, "sha512");
         $signature2 = Ecdsa::sign($message, $privateKey, "sha512");
 
-        \Test\assertTrue($signature1->r == $signature2->r, "r not deterministic");
-        \Test\assertTrue($signature1->s == $signature2->s, "s not deterministic");
+        \Test\assertTrue($signature1->r != $signature2->r || $signature1->s != $signature2->s, "sha512 hedged signatures should differ");
     }
 
     public function testHashMismatchFails()
@@ -653,7 +619,7 @@ class TestPrime256v1Security extends TestCase
         \Test\assertTrue(Ecdsa::verify($message, $signature, $publicKey), "verify failed");
     }
 
-    public function testDeterministicSignature()
+    public function testSignaturesAreHedged()
     {
         $prime256v1 = CurveFp::$supportedCurves["prime256v1"];
         $privateKey = new PrivateKey($prime256v1);
@@ -662,8 +628,7 @@ class TestPrime256v1Security extends TestCase
         $signature1 = Ecdsa::sign($message, $privateKey);
         $signature2 = Ecdsa::sign($message, $privateKey);
 
-        \Test\assertTrue($signature1->r == $signature2->r, "r not deterministic");
-        \Test\assertTrue($signature1->s == $signature2->s, "s not deterministic");
+        \Test\assertTrue($signature1->r != $signature2->r || $signature1->s != $signature2->s, "prime256v1 hedged signatures should differ");
     }
 
     public function testWrongCurveKeyFails()

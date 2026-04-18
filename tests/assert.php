@@ -19,6 +19,19 @@ function assertEqual($a, $b, $message="") {
     }
 }
 
+function assertNotEqual($a, $b, $message="") {
+    if ($a == $b) {
+        global $failure;
+        $failure ++;
+        $msg = $message ? $message : "'" . print_r($a, true) . "' == '" . print_r($b, true) . "'";
+        echo "\n      FAIL: " . $msg;
+    } else {
+        global $success;
+        $success ++;
+        echo "\n      success";
+    }
+}
+
 function assertTrue($a, $message="") {
     assertEqual($a, true, $message ?: "expected true, got false");
 }
