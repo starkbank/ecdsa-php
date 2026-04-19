@@ -298,12 +298,19 @@ class Math
         $px = $p->x; $py = $p->y; $pz = $p->z;
         $qx = $q->x; $qy = $q->y; $qz = $q->z;
 
-        $qz2 = Integer::modulo($qz * $qz, $P);
         $pz2 = Integer::modulo($pz * $pz, $P);
-        $U1 = Integer::modulo($px * $qz2, $P);
         $U2 = Integer::modulo($qx * $pz2, $P);
-        $S1 = Integer::modulo($py * $qz2 * $qz, $P);
         $S2 = Integer::modulo($qy * $pz2 * $pz, $P);
+
+        if ($qz == 1) {
+            // Mixed affine+Jacobian add: qz2=qz3=1 saves four multiplications.
+            $U1 = $px;
+            $S1 = $py;
+        } else {
+            $qz2 = Integer::modulo($qz * $qz, $P);
+            $U1 = Integer::modulo($px * $qz2, $P);
+            $S1 = Integer::modulo($py * $qz2 * $qz, $P);
+        }
 
         if ($U1 == $U2) {
             if ($S1 != $S2)
@@ -318,7 +325,7 @@ class Math
         $U1H2 = Integer::modulo($U1 * $H2, $P);
         $nx = Integer::modulo($R ** 2 - $H3 - 2 * $U1H2, $P);
         $ny = Integer::modulo($R * ($U1H2 - $nx) - $S1 * $H3, $P);
-        $nz = Integer::modulo($H * $pz * $qz, $P);
+        $nz = ($qz == 1) ? Integer::modulo($H * $pz, $P) : Integer::modulo($H * $pz * $qz, $P);
 
         return new Point($nx, $ny, $nz);
     }
