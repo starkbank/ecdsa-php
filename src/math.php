@@ -7,8 +7,6 @@ use EllipticCurve\Utils\Integer;
 
 class Math
 {
-    const GENERATOR_WINDOW_BITS = 4;
-
     /**
      * Tonelli-Shanks algorithm for modular square root. Works for all odd primes.
      */
@@ -84,10 +82,11 @@ class Math
     }
 
     /**
-     * Fast scalar multiplication n*G where G is the curve generator, using
-     * a precomputed window table (2^w-ary method). Roughly 2-3x faster
-     * than variable-base multiplication because doublings stay cheap and
-     * additions use pre-stored multiples of G.
+     * Fast scalar multiplication n*G using a precomputed affine table of
+     * powers-of-two multiples of G and the width-2 NAF of n. Every non-zero
+     * NAF digit triggers one mixed add and zero doublings, trading the ~256
+     * doublings of a windowed method for ~86 adds on average - a large net
+     * reduction in field multiplications for 256-bit scalars.
      *
      * @param CurveFp $curve Elliptic curve with generator G
      * @param mixed $n Scalar multiplier
@@ -102,44 +101,63 @@ class Math
             return new Point(0, 0, 0);
         }
 
-        $table = Math::generatorTable($curve);
-        $w = Math::GENERATOR_WINDOW_BITS;
-        $mask = (1 << $w) - 1;
+        $table = Math::generatorPowersTable($curve);
         $A = $curve->A;
         $P = $curve->P;
 
-        $r = new Point(0, 0, 1);  // Jacobian infinity (y=0 triggers early-return in add)
-        $startBit = intdiv($curve->nBitLength - 1, $w) * $w;
-        for ($bit = $startBit; $bit >= 0; $bit -= $w) {
-            for ($j = 0; $j < $w; $j++) {
-                $r = Math::jacobianDouble($r, $A, $P);
-            }
-            $window = 0;
-            for ($k = 0; $k < $w; $k++) {
-                if (gmp_testbit($n, $bit + $k)) {
-                    $window |= (1 << $k);
+        $r = new Point(0, 0, 1);
+        $i = 0;
+        $k = Integer::toBigInt($n);
+        $three = gmp_init(3);
+        $zero = gmp_init(0);
+        while ($k > 0) {
+            if (gmp_testbit($k, 0)) {
+                // digit = 2 - (k & 3) -> -1 or +1
+                $low2 = gmp_intval(gmp_and($k, $three));
+                $digit = 2 - $low2;
+                $k = $k - $digit;
+                $g = $table[$i];
+                if ($digit == 1) {
+                    $r = Math::jacobianAdd($r, $g, $A, $P);
+                } else {
+                    $r = Math::jacobianAdd($r, new Point($g->x, $P - $g->y, 1), $A, $P);
                 }
             }
-            if ($window) {
-                $r = Math::jacobianAdd($r, $table[$window], $A, $P);
-            }
+            $k = gmp_div_q($k, 2);
+            $i += 1;
         }
         return Math::fromJacobian($r, $P);
     }
 
-    private static function generatorTable($curve)
+    /**
+     * Build [G, 2G, 4G, ..., 2^nBitLength * G] in affine (z=1) form, so each
+     * add in multiplyGenerator hits the mixed-add fast path.
+     */
+    private static function generatorPowersTable($curve)
     {
         if ($curve->_generatorTable !== null) {
             return $curve->_generatorTable;
         }
-        $w = Math::GENERATOR_WINDOW_BITS;
         $A = $curve->A;
         $P = $curve->P;
-        $G = new Point($curve->G->x, $curve->G->y, 1);
-        $table = [new Point(0, 0, 1), $G];
-        $size = (1 << $w);
-        for ($i = 2; $i < $size; $i++) {
-            $table[] = Math::jacobianAdd($table[$i - 1], $G, $A, $P);
+        $current = new Point($curve->G->x, $curve->G->y, 1);
+        $table = [$current];
+        // NAF of an nBitLength-bit scalar can be up to nBitLength+1 digits.
+        for ($j = 0; $j < $curve->nBitLength; $j++) {
+            $doubled = Math::jacobianDouble($current, $A, $P);
+            if ($doubled->y == 0) {
+                $current = $doubled;
+            } else {
+                $zInv = Math::inv($doubled->z, $P);
+                $zInv2 = Integer::modulo($zInv * $zInv, $P);
+                $zInv3 = Integer::modulo($zInv2 * $zInv, $P);
+                $current = new Point(
+                    Integer::modulo($doubled->x * $zInv2, $P),
+                    Integer::modulo($doubled->y * $zInv3, $P),
+                    1
+                );
+            }
+            $table[] = $current;
         }
         $curve->_generatorTable = $table;
         return $table;
