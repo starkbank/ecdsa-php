@@ -390,8 +390,10 @@ class Math
     }
 
     /**
-     * Compute n1*p1 + n2*p2 using Shamir's trick (simultaneous double-and-add).
-     * Not constant-time - use only with public scalars (e.g. verification).
+     * Compute n1*p1 + n2*p2 using Shamir's trick with Joint Sparse Form
+     * (Solinas 2001). JSF picks signed digits in {-1, 0, 1} so at most ~l/2
+     * digit pairs are non-zero, versus ~3l/4 for the raw binary form. Not
+     * constant-time - use only with public scalars (e.g. verification).
      */
     private static function shamirMultiply($jp1, $n1, $jp2, $n2, $N, $A, $P)
     {
@@ -402,22 +404,89 @@ class Math
             $n2 = Integer::modulo($n2, $N);
         }
 
+        if ($n1 == 0 and $n2 == 0) {
+            return new Point(0, 0, 1);
+        }
+
+        $neg = function ($pt) use ($P) {
+            return new Point($pt->x, $pt->y == 0 ? gmp_init(0) : $P - $pt->y, $pt->z);
+        };
+
         $jp1p2 = Math::jacobianAdd($jp1, $jp2, $A, $P);
+        $jp1mp2 = Math::jacobianAdd($jp1, $neg($jp2), $A, $P);
+        $addTable = [
+            "1,0"   => $jp1,
+            "-1,0"  => $neg($jp1),
+            "0,1"   => $jp2,
+            "0,-1"  => $neg($jp2),
+            "1,1"   => $jp1p2,
+            "-1,-1" => $neg($jp1p2),
+            "1,-1"  => $jp1mp2,
+            "-1,1"  => $neg($jp1mp2),
+        ];
 
-        $l = max(Integer::bitLength($n1), Integer::bitLength($n2));
+        $digits = Math::jsfDigits($n1, $n2);
         $r = new Point(0, 0, 1);
-
-        for ($i = $l - 1; $i >= 0; $i--) {
+        foreach ($digits as $pair) {
+            list($u0, $u1) = $pair;
             $r = Math::jacobianDouble($r, $A, $P);
-            $b1 = gmp_testbit($n1, $i) ? 1 : 0;
-            $b2 = gmp_testbit($n2, $i) ? 1 : 0;
-            if ($b1) {
-                $r = Math::jacobianAdd($r, $b2 ? $jp1p2 : $jp1, $A, $P);
-            } elseif ($b2) {
-                $r = Math::jacobianAdd($r, $jp2, $A, $P);
+            if ($u0 != 0 or $u1 != 0) {
+                $r = Math::jacobianAdd($r, $addTable["$u0,$u1"], $A, $P);
             }
         }
 
         return $r;
+    }
+
+    /**
+     * Joint Sparse Form of (k0, k1): list of signed-digit pairs (u0, u1) in
+     * {-1, 0, 1}, ordered MSB-first. At most one of any two consecutive pairs
+     * is non-zero, giving density ~1/2 instead of ~3/4 from raw binary.
+     */
+    private static function jsfDigits($k0, $k1)
+    {
+        $digits = [];
+        $d0 = 0;
+        $d1 = 0;
+        $k0 = Integer::toBigInt($k0);
+        $k1 = Integer::toBigInt($k1);
+        $three = gmp_init(3);
+        $seven = gmp_init(7);
+        while ($k0 + $d0 != 0 or $k1 + $d1 != 0) {
+            $a0 = $k0 + $d0;
+            $a1 = $k1 + $d1;
+            if (gmp_testbit($a0, 0)) {
+                $a0m3 = gmp_intval(gmp_and($a0, $three));
+                $u0 = ($a0m3 == 1) ? 1 : -1;
+                $a0m7 = gmp_intval(gmp_and($a0, $seven));
+                $a1m3 = gmp_intval(gmp_and($a1, $three));
+                if (($a0m7 == 3 or $a0m7 == 5) and $a1m3 == 2) {
+                    $u0 = -$u0;
+                }
+            } else {
+                $u0 = 0;
+            }
+            if (gmp_testbit($a1, 0)) {
+                $a1m3 = gmp_intval(gmp_and($a1, $three));
+                $u1 = ($a1m3 == 1) ? 1 : -1;
+                $a1m7 = gmp_intval(gmp_and($a1, $seven));
+                $a0m3 = gmp_intval(gmp_and($a0, $three));
+                if (($a1m7 == 3 or $a1m7 == 5) and $a0m3 == 2) {
+                    $u1 = -$u1;
+                }
+            } else {
+                $u1 = 0;
+            }
+            $digits[] = [$u0, $u1];
+            if (2 * $d0 == 1 + $u0) {
+                $d0 = 1 - $d0;
+            }
+            if (2 * $d1 == 1 + $u1) {
+                $d1 = 1 - $d1;
+            }
+            $k0 = gmp_div_q($k0, 2);
+            $k1 = gmp_div_q($k1, 2);
+        }
+        return array_reverse($digits);
     }
 }
