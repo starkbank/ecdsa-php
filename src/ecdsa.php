@@ -59,7 +59,7 @@ class Ecdsa
         $v = Math::multiplyAndAdd(
             $curve->G, Integer::modulo($numberMessage * $inv, $curve->N),
             $publicKey->point, Integer::modulo($r * $inv, $curve->N),
-            $curve->N, $curve->A, $curve->P
+            $curve->N, $curve->A, $curve->P, $curve
         );
         if ($v->isAtInfinity())
             return false;

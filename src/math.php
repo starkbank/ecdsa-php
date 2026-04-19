@@ -183,20 +183,32 @@ class Math
     }
 
     /**
-     * Compute n1*p1 + n2*p2 using Shamir's trick (simultaneous double-and-add).
-     * Not constant-time - use only with public scalars (e.g. verification).
+     * Compute n1*p1 + n2*p2. If $curve is given and exposes glvParams
+     * (e.g. secp256k1), uses the GLV endomorphism to split both scalars into
+     * ~128-bit halves and run a 4-scalar simultaneous multi-exponentiation.
+     * Otherwise falls back to Shamir's trick with JSF. Not constant-time -
+     * use only with public scalars (e.g. verification).
      *
-     * @param Point $p1 First point
-     * @param mixed $n1 First scalar
-     * @param Point $p2 Second point
-     * @param mixed $n2 Second scalar
-     * @param mixed $N Order of the elliptic curve
-     * @param mixed $A Coefficient of the first-order term
-     * @param mixed $P Prime number in the module
+     * @param Point  $p1    First point
+     * @param mixed  $n1    First scalar
+     * @param Point  $p2    Second point
+     * @param mixed  $n2    Second scalar
+     * @param mixed  $N     Order of the elliptic curve (ignored when $curve given)
+     * @param mixed  $A     Coefficient of the first-order term (ignored when $curve given)
+     * @param mixed  $P     Prime number in the module (ignored when $curve given)
+     * @param object $curve Optional curve; enables GLV if $curve->glvParams is set
      * @return Point n1*p1 + n2*p2
      */
-    public static function multiplyAndAdd($p1, $n1, $p2, $n2, $N, $A, $P)
+    public static function multiplyAndAdd($p1, $n1, $p2, $n2, $N=null, $A=null, $P=null, $curve=null)
     {
+        if ($curve !== null) {
+            $N = $curve->N;
+            $A = $curve->A;
+            $P = $curve->P;
+            if ($curve->glvParams !== null) {
+                return Math::glvMultiplyAndAdd($p1, $n1, $p2, $n2, $curve);
+            }
+        }
         return Math::fromJacobian(
             Math::shamirMultiply(
                 Math::toJacobian($p1), $n1,
@@ -204,6 +216,92 @@ class Math
                 $N, $A, $P
             ), $P
         );
+    }
+
+    /**
+     * Compute n1*p1 + n2*p2 using the GLV endomorphism. Splits each 256-bit
+     * scalar into two ~128-bit scalars via k == k1 + k2*lambda (mod N), then
+     * runs a 4-scalar simultaneous double-and-add over (p1, phi(p1), p2,
+     * phi(p2)) with a 16-entry precomputed table of subset sums. Halves the
+     * loop length versus the plain Shamir path.
+     */
+    private static function glvMultiplyAndAdd($p1, $n1, $p2, $n2, $curve)
+    {
+        $glv = $curve->glvParams;
+        $N = $curve->N;
+        $A = $curve->A;
+        $P = $curve->P;
+        $beta = $glv["beta"];
+
+        list($k1, $k2) = Math::glvDecompose(Integer::modulo($n1, $N), $glv, $N);
+        list($k3, $k4) = Math::glvDecompose(Integer::modulo($n2, $N), $glv, $N);
+
+        // Base points (affine, z=1) - phi((x,y)) = (beta*x mod P, y).
+        $bases = [
+            new Point($p1->x, $p1->y, 1),
+            new Point(Integer::modulo($beta * $p1->x, $P), $p1->y, 1),
+            new Point($p2->x, $p2->y, 1),
+            new Point(Integer::modulo($beta * $p2->x, $P), $p2->y, 1),
+        ];
+        $scalars = [$k1, $k2, $k3, $k4];
+        for ($i = 0; $i < 4; $i++) {
+            if ($scalars[$i] < 0) {
+                $scalars[$i] = -$scalars[$i];
+                $bases[$i] = new Point($bases[$i]->x, $P - $bases[$i]->y, 1);
+            }
+        }
+
+        // Precompute table[idx] = sum of bases[i] selected by bits of idx.
+        $table = array_fill(0, 16, new Point(0, 0, 1));
+        for ($idx = 1; $idx < 16; $idx++) {
+            // low = idx & -idx; i = bit position of low
+            $low = $idx & -$idx;
+            $i = 0;
+            $tmp = $low;
+            while ($tmp > 1) { $tmp >>= 1; $i++; }
+            $table[$idx] = Math::jacobianAdd($table[$idx ^ $low], $bases[$i], $A, $P);
+        }
+
+        $maxLen = 0;
+        foreach ($scalars as $s) {
+            $bl = Integer::bitLength($s);
+            if ($bl > $maxLen) $maxLen = $bl;
+        }
+
+        $r = new Point(0, 0, 1);
+        $s0 = $scalars[0]; $s1 = $scalars[1]; $s2 = $scalars[2]; $s3 = $scalars[3];
+        for ($bit = $maxLen - 1; $bit >= 0; $bit--) {
+            $r = Math::jacobianDouble($r, $A, $P);
+            $idx = (gmp_testbit($s0, $bit) ? 1 : 0)
+                 | (gmp_testbit($s1, $bit) ? 2 : 0)
+                 | (gmp_testbit($s2, $bit) ? 4 : 0)
+                 | (gmp_testbit($s3, $bit) ? 8 : 0);
+            if ($idx) {
+                $r = Math::jacobianAdd($r, $table[$idx], $A, $P);
+            }
+        }
+
+        return Math::fromJacobian($r, $P);
+    }
+
+    /**
+     * Decompose k into (k1, k2) with k == k1 + k2*lambda (mod N) and
+     * |k1|, |k2| ~ sqrt(N). Babai rounding against the precomputed basis
+     * {(a1, b1), (a2, b2)}; k1 and k2 may be negative.
+     */
+    private static function glvDecompose($k, $glv, $N)
+    {
+        $a1 = $glv["a1"]; $b1 = $glv["b1"];
+        $a2 = $glv["a2"]; $b2 = $glv["b2"];
+        $halfN = gmp_div_q($N, 2);
+        // k is non-negative (reduced mod N); b2*k + halfN is non-negative,
+        // and -b1*k + halfN is non-negative (b1 is negative), so gmp_div_q's
+        // truncate-toward-zero matches Python's floor division here.
+        $c1 = gmp_div_q($b2 * $k + $halfN, $N);
+        $c2 = gmp_div_q(-$b1 * $k + $halfN, $N);
+        $k1 = $k - $c1 * $a1 - $c2 * $a2;
+        $k2 = -$c1 * $b1 - $c2 * $b2;
+        return [$k1, $k2];
     }
 
     /**

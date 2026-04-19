@@ -16,10 +16,10 @@ use EllipticCurve\Utils\Integer;
 
 class CurveFp
 {
-    public $A, $B, $P, $N, $G, $name, $nistName, $oid, $nBitLength;
+    public $A, $B, $P, $N, $G, $name, $nistName, $oid, $nBitLength, $glvParams;
     public $_generatorTable = null;
 
-    function __construct($A, $B, $P, $N, $Gx, $Gy, $name, $oid, $nistName=null)
+    function __construct($A, $B, $P, $N, $Gx, $Gy, $name, $oid, $nistName=null, $glvParams=null)
     {
         $this->A = gmp_init($A);
         $this->B = gmp_init($B);
@@ -30,6 +30,9 @@ class CurveFp
         $this->nistName = $nistName;
         $this->oid = $oid;
         $this->nBitLength = Integer::bitLength($this->N);
+        // GLV endomorphism parameters (only for curves that support one,
+        // e.g. secp256k1). null means no endomorphism; fall back to Shamir+JSF.
+        $this->glvParams = $glvParams;
     }
 
     /**
@@ -112,7 +115,19 @@ $secp256k1 = new CurveFp(
     "0x79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
     "0x483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b8",
     "secp256k1",
-    array(1, 3, 132, 0, 10)
+    array(1, 3, 132, 0, 10),
+    null,
+    // GLV endomorphism phi((x,y)) = (beta*x, y), equivalent to lambda*P.
+    // Basis vectors from Gauss reduction; used to split a 256-bit scalar k
+    // into two ~128-bit scalars (k1, k2) with k == k1 + k2*lambda (mod N).
+    array(
+        "beta"   => gmp_init("0x7ae96a2b657c07106e64479eac3434e99cf0497512f58995c1396c28719501ee"),
+        "lambda" => gmp_init("0x5363ad4cc05c30e0a5261c028812645a122e22ea20816678df02967c1b23bd72"),
+        "a1"     => gmp_init("0x3086d221a7d46bcde86c90e49284eb15"),
+        "b1"     => gmp_init("-0xe4437ed6010e88286f547fa90abfe4c3"),
+        "a2"     => gmp_init("0x114ca50f7a8e2f3f657c1108d9d44cfd8"),
+        "b2"     => gmp_init("0x3086d221a7d46bcde86c90e49284eb15"),
+    )
 );
 CurveFp::add($secp256k1);
 
