@@ -18,13 +18,13 @@ class TestSignatureRecoveryId extends TestCase
         $message = "This is a text message";
 
         $signature1 = \EllipticCurve\Ecdsa::sign($message, $privateKey);
-        
+
         $der = $signature1->toDer(true);
         $signature2 = Signature::fromDer($der, true);
-        
-        \Test\assertEqual($signature1->r, $signature2->r);
-        \Test\assertEqual($signature1->s, $signature2->s);
-        \Test\assertEqual($signature1->recoveryId, $signature2->recoveryId);
+
+        \Test\assertTrue($signature1->r == $signature2->r, "r mismatch");
+        \Test\assertTrue($signature1->s == $signature2->s, "s mismatch");
+        \Test\assertTrue($signature1->recoveryId == $signature2->recoveryId, "recoveryId mismatch");
     }
 
     public function testBase64Conversion()
@@ -38,9 +38,9 @@ class TestSignatureRecoveryId extends TestCase
 
         $signature2 = \EllipticCurve\Signature::fromBase64($base64, true);
 
-        \Test\assertEqual($signature1->r, $signature2->r);
-        \Test\assertEqual($signature1->s, $signature2->s);
-        \Test\assertEqual($signature1->recoveryId, $signature2->recoveryId);
+        \Test\assertTrue($signature1->r == $signature2->r, "r mismatch");
+        \Test\assertTrue($signature1->s == $signature2->s, "s mismatch");
+        \Test\assertTrue($signature1->recoveryId == $signature2->recoveryId, "recoveryId mismatch");
     }
 }
 

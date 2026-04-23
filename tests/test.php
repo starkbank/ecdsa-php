@@ -15,23 +15,29 @@ class TestCase
         $methods = get_class_methods($this);
 
         foreach($methods as $method) {
-            if ($method != "__construct" and $method != "run") {
+            if ($method != "__construct" and $method != "run" and strpos($method, "test") === 0) {
                 \Test\printSubHeader($method);
+                $GLOBALS["currentTestFailed"] = false;
                 $this->{$method}();
+                if ($GLOBALS["currentTestFailed"]) {
+                    $GLOBALS["failure"]++;
+                } else {
+                    $GLOBALS["success"]++;
+                }
             }
         }
     }
 }
 
-include_once("testPublicKey.php");
-include_once("testCompPubKey.php");
 include_once("testEcdsa.php");
+include_once("testCurve.php");
 include_once("testPrivateKey.php");
+include_once("testPublicKey.php");
 include_once("testSignature.php");
 include_once("testSignatureWithRecoveryId.php");
 include_once("testOpenSSL.php");
-include_once("testCurve.php");
-include_once("testRandomInteger.php");
 include_once("testRandom.php");
+include_once("testCompPubKey.php");
+include_once("testSecurity.php");
 
-echo "\n\nAll tests concluded\n\n";
+\Test\printResults();

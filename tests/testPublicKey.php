@@ -10,15 +10,15 @@ echo "\n\nRunning Public Key tests:";
 
 class TestPublicKey extends TestCase
 {
-    public function testStringConversion()
+    public function testPemConversion()
     {
         $privateKey = new \EllipticCurve\PrivateKey();
         $publicKey1 = $privateKey->publicKey();
-        $string = $publicKey1->toString();
-        $publicKey2 = \EllipticCurve\PublicKey::fromString($string);
-        \Test\assertEqual($publicKey1->point->x, $publicKey2->point->x);
-        \Test\assertEqual($publicKey1->point->y, $publicKey2->point->y);
-        \Test\assertEqual($publicKey1->curve, $publicKey2->curve);
+        $pem = $publicKey1->toPem();
+        $publicKey2 = \EllipticCurve\PublicKey::fromPem($pem);
+        \Test\assertTrue($publicKey1->point->x == $publicKey2->point->x, "x mismatch");
+        \Test\assertTrue($publicKey1->point->y == $publicKey2->point->y, "y mismatch");
+        \Test\assertTrue($publicKey1->curve->name == $publicKey2->curve->name, "curve mismatch");
     }
 
     public function testDerConversion()
@@ -27,20 +27,20 @@ class TestPublicKey extends TestCase
         $publicKey1 = $privateKey->publicKey();
         $der = $publicKey1->toDer();
         $publicKey2 = \EllipticCurve\PublicKey::fromDer($der);
-        \Test\assertEqual($publicKey1->point->x, $publicKey2->point->x);
-        \Test\assertEqual($publicKey1->point->y, $publicKey2->point->y);
-        \Test\assertEqual($publicKey1->curve, $publicKey2->curve);
+        \Test\assertTrue($publicKey1->point->x == $publicKey2->point->x, "x mismatch");
+        \Test\assertTrue($publicKey1->point->y == $publicKey2->point->y, "y mismatch");
+        \Test\assertTrue($publicKey1->curve->name == $publicKey2->curve->name, "curve mismatch");
     }
 
-    public function testPemConversion()
+    public function testStringConversion()
     {
         $privateKey = new \EllipticCurve\PrivateKey();
         $publicKey1 = $privateKey->publicKey();
-        $pem = $publicKey1->toPem();
-        $publicKey2 = \EllipticCurve\PublicKey::fromPem($pem);
-        \Test\assertEqual($publicKey1->point->x, $publicKey2->point->x);
-        \Test\assertEqual($publicKey1->point->y, $publicKey2->point->y);
-        \Test\assertEqual($publicKey1->curve, $publicKey2->curve);
+        $string = $publicKey1->toString();
+        $publicKey2 = \EllipticCurve\PublicKey::fromString($string);
+        \Test\assertTrue($publicKey1->point->x == $publicKey2->point->x, "x mismatch");
+        \Test\assertTrue($publicKey1->point->y == $publicKey2->point->y, "y mismatch");
+        \Test\assertTrue($publicKey1->curve->name == $publicKey2->curve->name, "curve mismatch");
     }
 }
 
