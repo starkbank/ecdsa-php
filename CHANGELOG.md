@@ -13,6 +13,8 @@ Given a version number MAJOR.MINOR.PATCH, increment:
 
 
 ## [Unreleased]
+### Fixed
+- top-level gmp_init() running on every autoload, breaking transitive dependents without ext-gmp (#27)
 
 ## [2.2.0] - 2026-04-28
 ### Changed
