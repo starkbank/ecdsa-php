@@ -13,6 +13,8 @@ Given a version number MAJOR.MINOR.PATCH, increment:
 
 
 ## [Unreleased]
+### Fixed
+- PublicKey::fromString rejecting base64 DER and PEM inputs, breaking sendgrid-php webhook verification (#23)
 
 ## [2.2.0] - 2026-04-28
 ### Changed

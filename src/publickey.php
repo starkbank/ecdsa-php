@@ -92,6 +92,21 @@ class PublicKey
 
     static function fromString($string, $curve=null, $validatePoint=true)
     {
+        // Backwards compatibility with v0.0.5, where fromString accepted a
+        // base64-encoded DER (the format SendGrid's webhooks publish and
+        // sendgrid-php's EventWebhook still passes verbatim). Detect PEM
+        // and base64-DER inputs and route to the matching parser.
+        if (strpos($string, "-----BEGIN") !== false) {
+            return PublicKey::fromPem($string);
+        }
+        if (!ctype_xdigit($string)) {
+            $decoded = base64_decode($string, true);
+            if ($decoded === false) {
+                throw new Exception("Public key string is neither hex coordinates, base64 DER, nor PEM");
+            }
+            return PublicKey::fromDer($decoded);
+        }
+
         $curve = is_null($curve) ? CurveFp::$supportedCurves["secp256k1"] : $curve;
         $baseLength = gmp_intval(2 * $curve->length());
         if ((strlen($string) > 2 * $baseLength) and (substr($string, 0, 4) == "0004")) {
